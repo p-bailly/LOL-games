@@ -44,6 +44,11 @@ export function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
+/** « 24 oct. 2019 » : pour les records de toute l'histoire. */
+export function fullDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 export function timeAgo(iso: string): string {
   const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000)
   if (s < 60) return "à l'instant"

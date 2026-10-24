@@ -52,8 +52,12 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
     dégâts et de l'or de l'équipe, participation aux kills, vision par minute) ;
   - **Équipes** d'un tournoi : taux de victoire, durée moyenne des games, kills, écart d'or, tours, dragons, barons et hérauts
     par game, taux de victoire côté bleu et côté rouge ;
-  - **Records** d'un tournoi : game la plus courte et la plus longue, plus de kills, plus gros écart d'or, plus longue suite de
-    victoires, et sur une game les meilleures performances individuelles (kills, assists, dégâts, CS, vision, KDA) ;
+  - **Records** : les trois premiers de chaque catégorie, pour un **tournoi**, pour **une année** (2011 à aujourd'hui) ou
+    pour **tous les temps**, toutes ligues ou une seule. Games : la plus courte et la plus longue, plus de kills, plus gros
+    écart d'or ; sur une game, les meilleures performances individuelles (kills, assists, dégâts, CS, vision, KDA sans mourir) ;
+    pour un tournoi, aussi la plus longue suite de victoires. Pour une année ou tous les temps, l'appli ne télécharge pas les
+    ~90 000 games : elle demande à Leaguepedia les trois premières de chaque catégorie (`api/records.ts`) et garde le résultat
+    sur l'appareil (12 h, 1 h pour l'année en cours) ;
   - **Régions** : bilan des compétitions internationales des trois dernières années entre régions (séries et games, par
     compétition ou cumulé, et face-à-face de chaque région contre les autres), et courbe du niveau de chaque région (moyenne
     de l'Elo de ses 5 meilleures équipes, mois par mois). La région d'une équipe est celle de sa ligue actuelle.
@@ -162,6 +166,7 @@ src/
   api/leaguepedia.ts   séries, games, drafts, équipes
   api/stats.ts         tournois, classements, effectifs, stats de champions et de joueurs
   api/games.ts         games et lignes de joueurs d'un tournoi, séries des compétitions internationales (stats d'équipe, records, régions)
+  api/records.ts       records d'une année ou de tous les temps (top 3 par catégorie, demandé à Leaguepedia)
   api/lolesports.ts    API LoL Esports (direct), api/live.ts : rapprochement avec les séries de Leaguepedia
   api/ddragon.ts       icônes de champions et d'objets (Data Dragon)
   api/leagues.ts       ligues suivies

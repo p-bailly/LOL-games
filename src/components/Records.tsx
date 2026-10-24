@@ -2,12 +2,12 @@ import { useMemo, type ReactNode } from 'react'
 import { fetchTournamentGames, fetchTournamentLines, type GameRow } from '../api/games'
 import { teamOf } from '../api/leaguepedia'
 import { usePolling } from '../hooks/usePolling'
-import { clock, goldDiff, kda, kdaNum, kilo, shortDate } from '../lib/format'
+import { clock, goldDiff, kilo, shortDate } from '../lib/format'
 import { playerGames, top, winStreaks, type PlayerGame, type Ranked } from '../lib/gameStats'
 import { href } from '../lib/router'
 import { Empty, ErrorBox, Loading } from './ui'
 
-interface Entry {
+export interface Entry {
   key: string
   href: string
   rank: number
@@ -18,11 +18,23 @@ interface Entry {
 
 const code = (team: string) => teamOf(team).code
 
-function RecordCard({ title, entries }: { title: string; entries: Entry[] }) {
-  if (!entries.length) return null
+/** Un record : les trois premiers. `loading` / `error` : la catégorie se charge ou n'a pas pu l'être. */
+export function RecordCard({ title, entries, loading, error, onRetry }: { title: string; entries: Entry[]; loading?: boolean; error?: boolean; onRetry?: () => void }) {
+  if (!entries.length && !loading && !error) return null
   return (
     <section className="card flush">
       <h3 className="card-title">{title}</h3>
+      {loading && !entries.length && <p className="record-note muted">Chargement…</p>}
+      {error && !entries.length && (
+        <p className="record-note muted">
+          Indisponible pour le moment.{' '}
+          {onRetry && (
+            <button className="link-btn" onClick={onRetry}>
+              Réessayer
+            </button>
+          )}
+        </p>
+      )}
       <ol className="record-list">
         {entries.map((e) => (
           <li key={e.key}>
@@ -108,8 +120,8 @@ export function Records({ page, active }: { page: string; active: boolean }) {
         { title: 'Plus de CS', entries: playerEntries(best((p) => p.cs), (p) => String(p.cs)) },
         { title: 'Meilleur score de vision', entries: playerEntries(best((p) => p.vision), (p) => String(p.vision)) },
         {
-          title: 'Meilleur KDA',
-          entries: playerEntries(best((p) => kdaNum(p.kills, p.deaths, p.assists)), (p) => `${p.kills}/${p.deaths}/${p.assists}`, (p) => `KDA ${kda(p.kills, p.deaths, p.assists)}`),
+          title: 'Meilleur KDA sans mourir',
+          entries: playerEntries(top(players.filter((p) => p.deaths === 0), (p) => p.kills + p.assists, 'max'), (p) => `${p.kills}/${p.deaths}/${p.assists}`),
         },
       ],
     }

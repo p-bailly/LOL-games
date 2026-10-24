@@ -2876,3 +2876,8 @@ a.player-link:hover strong {
   stroke: var(--surface);
   stroke-width: 2;
 }
+
+.record-note {
+  padding: 4px 14px 14px;
+  font-size: 13px;
+}

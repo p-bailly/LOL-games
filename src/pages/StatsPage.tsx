@@ -3,6 +3,7 @@ import { fetchChampionStats, fetchPlayerStats } from '../api/stats'
 import { ROLES, ROLE_FR } from '../api/leagues'
 import { teamOf } from '../api/leaguepedia'
 import { AdvancedPlayers } from '../components/AdvancedPlayers'
+import { AllTimeRecords } from '../components/AllTimeRecords'
 import { Records } from '../components/Records'
 import { RegionStats } from '../components/RegionStats'
 import { SortTh, useSort } from '../components/SortTh'
@@ -14,17 +15,21 @@ import { fixed, kdaNum, kilo, pct } from '../lib/format'
 import { href } from '../lib/router'
 
 type View = 'champions' | 'players' | 'teams' | 'records' | 'regions'
+type RecordsScope = 'tournament' | 'year' | 'all'
 
 export function StatsPage({ active }: { active: boolean }) {
   const picker = useTournamentPicker(active)
   const [view, setView] = useState<View>('champions')
+  const [scope, setScope] = useState<RecordsScope>('tournament')
   const page = picker.tournament?.page
-  // Les régions se comparent sur les compétitions internationales : pas de choix de tournoi.
-  const byTournament = view !== 'regions'
+  // Records d'une année ou de toute l'histoire, et régions : pas de choix de tournoi.
+  const wide = view === 'records' && scope !== 'tournament'
+  const byTournament = view !== 'regions' && !wide
+  const subtitle = view === 'regions' ? 'Compétitions internationales' : wide ? (scope === 'all' ? 'Records de tous les temps' : 'Records d’une année') : (picker.tournament?.name ?? ' ')
 
   return (
     <>
-      <PageHeader title="Stats" subtitle={byTournament ? (picker.tournament?.name ?? ' ') : 'Compétitions internationales'} />
+      <PageHeader title="Stats" subtitle={subtitle} />
       <div className="toolbar">
         <Segmented<View>
           compact
@@ -39,15 +44,30 @@ export function StatsPage({ active }: { active: boolean }) {
           ]}
         />
       </div>
+      {view === 'records' && (
+        <div className="toolbar">
+          <Segmented<RecordsScope>
+            compact
+            value={scope}
+            onChange={setScope}
+            options={[
+              { value: 'tournament', label: 'Ce tournoi' },
+              { value: 'year', label: 'Une année' },
+              { value: 'all', label: 'Tous les temps' },
+            ]}
+          />
+        </div>
+      )}
       {byTournament && <TournamentPicker picker={picker} />}
       <div className="content">
         {byTournament && picker.error && !picker.loaded && <ErrorBox error={picker.error} onRetry={picker.refresh} />}
         {byTournament && !picker.loaded && !picker.error && <Loading />}
         {byTournament && picker.loaded && !page && <Empty>Aucun tournoi récent pour cette ligue.</Empty>}
-        {page && view === 'champions' && <Champions page={page} active={active} />}
-        {page && view === 'players' && <Players page={page} active={active} />}
-        {page && view === 'teams' && <TeamStats page={page} active={active} />}
-        {page && view === 'records' && <Records page={page} active={active} />}
+        {byTournament && page && view === 'champions' && <Champions page={page} active={active} />}
+        {byTournament && page && view === 'players' && <Players page={page} active={active} />}
+        {byTournament && page && view === 'teams' && <TeamStats page={page} active={active} />}
+        {byTournament && page && view === 'records' && <Records page={page} active={active} />}
+        {wide && <AllTimeRecords scope={scope === 'all' ? 'all' : 'year'} active={active} />}
         {view === 'regions' && <RegionStats active={active} />}
       </div>
     </>
