@@ -2707,3 +2707,18 @@ a.player-link:hover strong {
   stroke: var(--axis);
   stroke-width: 1;
 }
+
+/* Jours suivants, sous le jour affiché */
+.next-day {
+  margin-top: 18px;
+}
+.day-title {
+  margin: 0 0 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 15px;
+  color: var(--text-2);
+}
+.scroll-end {
+  height: 1px;
+}

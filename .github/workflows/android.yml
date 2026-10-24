@@ -30,6 +30,8 @@ jobs:
           java-version: 21
       - run: npm ci
       - run: npm run build
+        env:
+          VITE_BUILD: ${{ github.run_number }}
       - run: npx cap sync android
       - name: Compilation de l'APK
         working-directory: android

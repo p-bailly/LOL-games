@@ -97,6 +97,7 @@ export function TeamsPage({ active }: { active: boolean }) {
             )
           })}
         </section>
+        <p className="footnote">LoL Live · version {import.meta.env.VITE_BUILD || 'locale'}</p>
       </div>
     </>
   )

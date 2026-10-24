@@ -1,4 +1,4 @@
-import { useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { fetchCalendar, fetchMatches } from '../api/leaguepedia'
 import { applyLive } from '../api/live'
 import type { Match } from '../api/types'
@@ -20,6 +20,93 @@ function defaultDay(days: string[]): string {
   const t = today()
   if (!days.length || days.includes(t)) return t
   return days.find((d) => d > t) ?? days[days.length - 1]
+}
+
+/** Séries d'un jour (heure locale), actualisées plus souvent quand une série est en direct. */
+function useDay(day: string, leagues: string[] | undefined, active: boolean) {
+  return usePolling(
+    async (signal) => {
+      const from = dayToDate(day)
+      const to = new Date(from)
+      to.setDate(to.getDate() + 1)
+      return applyLive(await fetchMatches(from, to, leagues, signal), signal)
+    },
+    [day, leagues?.join(',') ?? ''],
+    (m) => liveInterval(m),
+    active,
+  )
+}
+
+/** Séries d'un jour rangées en sections : mes équipes, en direct, à venir, terminées. */
+function sectionsOf(matches: Match[], filter: Filter, favs: string[], intlOn: boolean): [string, Match[]][] {
+  const isFav = (m: Match) => favs.includes(m.a.team.id) || favs.includes(m.b.team.id)
+  const shown = matches.filter((m) => (filter === 'live' ? m.state === 'in' : filter === 'fav' ? isFav(m) : true))
+  const favMatches = filter === 'all' ? shown.filter(isFav) : []
+  const rest = shown.filter((m) => !favMatches.includes(m))
+  // L'international d'abord quand il est en cours, puis par heure.
+  const rank = (m: Match) => (intlOn && m.league === 'intl' ? 0 : 1)
+  const byTime = (a: Match, b: Match) => rank(a) - rank(b) || a.date.localeCompare(b.date)
+  return [
+    ['Mes équipes', favMatches.sort(byTime)],
+    ['En direct', rest.filter((m) => m.state === 'in').sort(byTime)],
+    ['À venir', rest.filter((m) => m.state === 'pre').sort(byTime)],
+    ['Terminés', rest.filter((m) => m.state === 'post').sort(byTime)],
+  ]
+}
+
+function Sections({ sections, favs }: { sections: [string, Match[]][]; favs: string[] }) {
+  return (
+    <>
+      {sections.map(
+        ([title, list]) =>
+          list.length > 0 && (
+            <section key={title} className="games-section">
+              <h2 className="section-title">{title}</h2>
+              <div className="games-grid">
+                {list.map((m) => (
+                  <MatchCard key={m.id} match={m} favorites={favs} />
+                ))}
+              </div>
+            </section>
+          ),
+      )}
+    </>
+  )
+}
+
+/** Un jour suivant, affiché sous le précédent quand on descend. */
+function NextDay({
+  day,
+  leagues,
+  filter,
+  favs,
+  intlOn,
+  active,
+  onLoaded,
+}: {
+  day: string
+  leagues: string[] | undefined
+  filter: Filter
+  favs: string[]
+  intlOn: boolean
+  active: boolean
+  onLoaded: (day: string) => void
+}) {
+  const { data, error, refresh } = useDay(day, leagues, active)
+  useEffect(() => {
+    if (data || error) onLoaded(day)
+  }, [data, error, day, onLoaded])
+  const sections = useMemo(() => sectionsOf(data ?? [], filter, favs, intlOn), [data, filter, favs, intlOn])
+  const any = sections.some(([, l]) => l.length)
+  return (
+    <div className="next-day">
+      <h2 className="day-title">{longDay(day)}</h2>
+      {!data && !error && <Loading />}
+      {error && !data && <ErrorBox error={error} onRetry={refresh} />}
+      {data && !any && <Empty>{data.length ? 'Pas de match de vos équipes ce jour-là.' : 'Aucun match ce jour-là.'}</Empty>}
+      <Sections sections={sections} favs={favs} />
+    </div>
+  )
 }
 
 export function MatchesPage({ active }: { active: boolean }) {
@@ -44,38 +131,40 @@ export function MatchesPage({ active }: { active: boolean }) {
   const days = calendar.data ?? []
   const selected = day ?? defaultDay(days)
 
-  const { data, error, loading, updatedAt, refresh } = usePolling(
-    async (signal) => {
-      const from = dayToDate(selected)
-      const to = new Date(from)
-      to.setDate(to.getDate() + 1)
-      return applyLive(await fetchMatches(from, to, leagues, signal), signal)
-    },
-    [selected, league],
-    (m) => liveInterval(m),
-    active,
-  )
+  const { data, error, loading, updatedAt, refresh } = useDay(selected, leagues, active)
 
   const matches = data ?? []
-  const isFav = (m: Match) => favs.includes(m.a.team.id) || favs.includes(m.b.team.id)
   const liveCount = matches.filter((m) => m.state === 'in').length
-
-  const shown = matches.filter((m) => (filter === 'live' ? m.state === 'in' : filter === 'fav' ? isFav(m) : true))
-  const favMatches = filter === 'all' ? shown.filter(isFav) : []
-  const rest = shown.filter((m) => !favMatches.includes(m))
-  // L'international d'abord quand il est en cours, puis par heure.
-  const rank = (m: Match) => (order.intlOn && m.league === 'intl' ? 0 : 1)
-  const byTime = (a: Match, b: Match) => rank(a) - rank(b) || a.date.localeCompare(b.date)
-  const sections: [string, Match[]][] = useMemo(
-    () => [
-      ['Mes équipes', favMatches.sort(byTime)],
-      ['En direct', rest.filter((m) => m.state === 'in').sort(byTime)],
-      ['À venir', rest.filter((m) => m.state === 'pre').sort(byTime)],
-      ['Terminés', rest.filter((m) => m.state === 'post').sort(byTime)],
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const sections = useMemo(
+    () => sectionsOf(data ?? [], filter, favs, order.intlOn),
     [data, filter, favs, order.intlOn],
   )
+  const anyShown = sections.some(([, l]) => l.length)
+
+  // Jours suivants : quand on arrive en bas de la liste, le jour d'après s'ajoute dessous.
+  const [more, setMore] = useState<string[]>([])
+  const [loaded, setLoaded] = useState<string[]>([])
+  const [atEnd, setAtEnd] = useState(false)
+  const end = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    setMore([])
+    setLoaded([])
+  }, [selected, league, filter === 'live'])
+  const onLoaded = useRef((d: string) => setLoaded((l) => (l.includes(d) ? l : [...l, d]))).current
+  useEffect(() => {
+    const el = end.current
+    if (!el) return
+    const io = new IntersectionObserver((e) => setAtEnd(e.some((x) => x.isIntersecting)), { rootMargin: '300px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  const last = more.length ? more[more.length - 1] : selected
+  const ready = !!data && more.every((d) => loaded.includes(d))
+  const next = days.find((d) => d > last)
+  useEffect(() => {
+    if (atEnd && ready && next && filter !== 'live') setMore((m) => [...m, next])
+  }, [atEnd, ready, next, filter])
+
   const estimated = matches.some((m) => m.state === 'in' && m.estimated)
 
   return (
@@ -115,7 +204,7 @@ export function MatchesPage({ active }: { active: boolean }) {
         {error && !data && <ErrorBox error={error} onRetry={refresh} />}
         {!data && !error && <Loading />}
         {data && matches.length === 0 && <Empty>Aucun match ce jour-là.</Empty>}
-        {data && matches.length > 0 && shown.length === 0 && (
+        {data && matches.length > 0 && !anyShown && (
           <Empty>
             {filter === 'live'
               ? 'Aucun match en cours pour le moment.'
@@ -124,19 +213,12 @@ export function MatchesPage({ active }: { active: boolean }) {
                 : 'Ajoutez vos équipes favorites dans l’onglet « Équipes ».'}
           </Empty>
         )}
-        {sections.map(
-          ([title, list]) =>
-            list.length > 0 && (
-              <section key={title} className="games-section">
-                <h2 className="section-title">{title}</h2>
-                <div className="games-grid">
-                  {list.map((m) => (
-                    <MatchCard key={m.id} match={m} favorites={favs} />
-                  ))}
-                </div>
-              </section>
-            ),
-        )}
+        <Sections sections={sections} favs={favs} />
+        {filter !== 'live' &&
+          more.map((d) => (
+            <NextDay key={d} day={d} leagues={leagues} filter={filter} favs={favs} intlOn={order.intlOn} active={active} onLoaded={onLoaded} />
+          ))}
+        <div ref={end} className="scroll-end" aria-hidden="true" />
         {data && matches.length > 0 && (
           <p className="footnote">
             Heures affichées dans votre fuseau horaire.
