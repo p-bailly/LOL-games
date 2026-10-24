@@ -2588,3 +2588,46 @@ a.player-link:hover strong {
   font-size: 14px;
   color: var(--text-2);
 }
+
+/* Elo et chances sur les cartes de série */
+.gc-name {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  line-height: 1.2;
+}
+.gc-name > span {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gc-prob {
+  min-width: 3.2ch;
+  text-align: right;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.gc-prob.fav {
+  color: var(--text);
+  font-weight: 800;
+}
+.gc-chance {
+  display: flex;
+  gap: 2px;
+  height: 4px;
+  margin-top: 10px;
+}
+.gc-chance span {
+  min-width: 3px;
+  border-radius: 3px;
+}
+.gc-chance .blue {
+  background: var(--c-blue);
+}
+.gc-chance .red {
+  background: var(--c-red);
+}

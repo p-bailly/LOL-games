@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchMatchDetail } from '../api/leaguepedia'
 import { applyLive } from '../api/live'
-import { fetchRatings, gameProb, ratingOf } from '../api/ratings'
+import { fetchRatings, ratingOf, winChance } from '../api/ratings'
 import type { FormEntry, Game, Match, MatchDetail, Side } from '../api/types'
 import { Draft, Scoreboard, TeamCompare } from '../components/GameViews'
 import { LivePanel } from '../components/LivePanel'
@@ -205,12 +205,10 @@ function PreMatch({ detail }: { detail: MatchDetail }) {
 function WinChance({ match }: { match: Match }) {
   const { data } = usePolling(() => fetchRatings(), [], null)
   if (!data) return null
-  const pg = gameProb(ratingOf(data, match.a.team.id), ratingOf(data, match.b.team.id))
-  // En cours : on repart du score de la série (games déjà gagnées), en repartant d'une série plus courte.
   const need = Math.floor(match.bestOf / 2) + 1
   const sa = match.state === 'in' ? match.a.score ?? 0 : 0
   const sb = match.state === 'in' ? match.b.score ?? 0 : 0
-  const pa = remaining(pg, need - sa, need - sb)
+  const pa = winChance(ratingOf(data, match.a.team.id), ratingOf(data, match.b.team.id), match.bestOf, Math.min(sa, need), Math.min(sb, need))
   const pct = Math.round(pa * 100)
   return (
     <div className="chance" aria-label={`Chances de gagner : ${match.a.team.code} ${pct} %, ${match.b.team.code} ${100 - pct} %`}>
@@ -225,11 +223,4 @@ function WinChance({ match }: { match: Match }) {
       </div>
     </div>
   )
-}
-
-/** Chance que A gagne encore `na` games avant que B n'en gagne `nb`, chaque game étant gagnée par A avec la chance p. */
-function remaining(p: number, na: number, nb: number): number {
-  if (na <= 0) return 1
-  if (nb <= 0) return 0
-  return p * remaining(p, na - 1, nb) + (1 - p) * remaining(p, na, nb - 1)
 }

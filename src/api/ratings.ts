@@ -94,6 +94,19 @@ export function computeRatings(series: Row[]): Ratings {
   return r
 }
 
+/** Chance que A gagne encore `na` games avant que B n'en gagne `nb`, chaque game étant gagnée par A avec la chance p. */
+function remaining(p: number, na: number, nb: number): number {
+  if (na <= 0) return 1
+  if (nb <= 0) return 0
+  return p * remaining(p, na - 1, nb) + (1 - p) * remaining(p, na, nb - 1)
+}
+
+/** Chance que A gagne la série, sachant les notes Elo et le score actuel de la série (0-0 avant le début). */
+export function winChance(ra: number, rb: number, bestOf: number, scoreA = 0, scoreB = 0): number {
+  const need = Math.floor(bestOf / 2) + 1
+  return remaining(gameProb(ra, rb), need - scoreA, need - scoreB)
+}
+
 /** Forces de toutes les équipes : le classement Elo mondial ; à défaut, un calcul rapide sur les 18 derniers mois. */
 export async function fetchRatings(): Promise<Ratings> {
   try {
