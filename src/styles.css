@@ -2435,3 +2435,23 @@ a.player-link:hover strong {
   color: var(--muted);
   opacity: 0.7;
 }
+
+/* Colonnes triables des stats */
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sort-btn.on {
+  color: var(--accent);
+}
+.sort-arrow {
+  display: inline-block;
+  min-width: 8px;
+  font-size: 8px;
+}

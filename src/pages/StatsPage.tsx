@@ -9,8 +9,40 @@ import { fixed, kdaNum, kilo, pct } from '../lib/format'
 import { href } from '../lib/router'
 
 type View = 'champions' | 'players'
-type ChampSort = 'presence' | 'picks' | 'bans' | 'winrate'
-type PlayerSort = 'kda' | 'kills' | 'damage' | 'cs' | 'winrate'
+type Dir = 'best' | 'worst'
+
+/** Tri d'un tableau : on touche une colonne pour trier du meilleur au plus faible, une 2e fois pour inverser. */
+function useSort<K extends string>(initial: K) {
+  const [sort, set] = useState<{ key: K; dir: Dir }>({ key: initial, dir: 'best' })
+  const toggle = (key: K) => set((s) => (s.key === key ? { key, dir: s.dir === 'best' ? 'worst' : 'best' } : { key, dir: 'best' }))
+  return [sort, toggle] as const
+}
+
+function SortTh<K extends string>({
+  k,
+  label,
+  sort,
+  onSort,
+  left,
+}: {
+  k: K
+  label: string
+  sort: { key: K; dir: Dir }
+  onSort: (k: K) => void
+  left?: boolean
+}) {
+  const on = sort.key === k
+  return (
+    <th scope="col" className={left ? 'left' : ''} aria-sort={on ? (sort.dir === 'best' ? 'descending' : 'ascending') : 'none'}>
+      <button className={`sort-btn ${on ? 'on' : ''}`} onClick={() => onSort(k)} title={on && sort.dir === 'best' ? 'Du meilleur au plus faible (toucher pour inverser)' : on ? 'Du plus faible au meilleur (toucher pour inverser)' : 'Trier du meilleur au plus faible'}>
+        {label}
+        <span className="sort-arrow" aria-hidden="true">
+          {on ? (sort.dir === 'best' ? '▼' : '▲') : ''}
+        </span>
+      </button>
+    </th>
+  )
+}
 
 export function StatsPage({ active }: { active: boolean }) {
   const picker = useTournamentPicker(active)
@@ -42,16 +74,25 @@ export function StatsPage({ active }: { active: boolean }) {
   )
 }
 
+type ChampKey = 'presence' | 'picks' | 'bans' | 'winrate'
+const MIN_PICKS = 3 // en dessous, un taux de victoire ne veut rien dire : ces champions passent après les autres
+
 function Champions({ page, active }: { page: string; active: boolean }) {
-  const [sort, setSort] = useState<ChampSort>('presence')
+  const [sort, onSort] = useSort<ChampKey>('presence')
   const { data, error, refresh } = usePolling((s) => fetchChampionStats([page], s), [page], 10 * 60_000, active)
 
   const rows = useMemo(() => {
     if (!data) return []
     const g = data.games || 1
     const val = (c: (typeof data.champions)[number]) =>
-      sort === 'picks' ? c.picks : sort === 'bans' ? c.bans : sort === 'winrate' ? (c.picks >= 3 ? c.wins / c.picks : -1) : (c.picks + c.bans) / g
-    return [...data.champions].sort((a, b) => val(b) - val(a) || b.picks - a.picks).slice(0, 60)
+      sort.key === 'picks' ? c.picks : sort.key === 'bans' ? c.bans : sort.key === 'winrate' ? c.wins / (c.picks || 1) : (c.picks + c.bans) / g
+    const sign = sort.dir === 'best' ? -1 : 1
+    return [...data.champions]
+      .sort((a, b) => {
+        if (sort.key === 'winrate' && (a.picks >= MIN_PICKS) !== (b.picks >= MIN_PICKS)) return a.picks >= MIN_PICKS ? -1 : 1
+        return sign * (val(a) - val(b)) || b.picks - a.picks || a.champion.localeCompare(b.champion)
+      })
+      .slice(0, 100)
   }, [data, sort])
 
   if (error && !data) return <ErrorBox error={error} onRetry={refresh} />
@@ -60,26 +101,16 @@ function Champions({ page, active }: { page: string; active: boolean }) {
 
   return (
     <>
-      <Chips
-        value={sort}
-        onChange={setSort}
-        options={[
-          { value: 'presence', label: 'Présence' },
-          { value: 'picks', label: 'Picks' },
-          { value: 'bans', label: 'Bans' },
-          { value: 'winrate', label: 'Victoires' },
-        ]}
-      />
       <div className="card flush">
         <div className="table-scroll">
           <table className="standings stats-table">
             <thead>
               <tr>
                 <th scope="col" className="left">Champion</th>
-                <th scope="col">Présence</th>
-                <th scope="col">Picks</th>
-                <th scope="col">Bans</th>
-                <th scope="col">Vict.</th>
+                <SortTh k="presence" label="Présence" sort={sort} onSort={onSort} />
+                <SortTh k="picks" label="Picks" sort={sort} onSort={onSort} />
+                <SortTh k="bans" label="Bans" sort={sort} onSort={onSort} />
+                <SortTh k="winrate" label="Vict." sort={sort} onSort={onSort} />
               </tr>
             </thead>
             <tbody>
@@ -94,7 +125,7 @@ function Champions({ page, active }: { page: string; active: boolean }) {
                   <td className="strong">{pct(c.picks + c.bans, data.games)}</td>
                   <td>{c.picks}</td>
                   <td>{c.bans}</td>
-                  <td className={c.picks >= 3 ? (c.wins / c.picks >= 0.5 ? 'pos' : 'neg') : ''}>{c.picks ? pct(c.wins, c.picks) : '–'}</td>
+                  <td className={c.picks >= MIN_PICKS ? (c.wins / c.picks >= 0.5 ? 'pos' : 'neg') : ''}>{c.picks ? pct(c.wins, c.picks) : '–'}</td>
                 </tr>
               ))}
             </tbody>
@@ -102,14 +133,17 @@ function Champions({ page, active }: { page: string; active: boolean }) {
         </div>
       </div>
       <p className="footnote">
-        {data.games} game{data.games > 1 ? 's' : ''} analysée{data.games > 1 ? 's' : ''}. Présence : part des games où le champion est pické ou banni. Victoires : taux de victoire quand il est pické (3 picks minimum pour le tri).
+        Touche une colonne pour trier du meilleur au plus faible, une deuxième fois pour inverser. {data.games} game{data.games > 1 ? 's' : ''} analysée{data.games > 1 ? 's' : ''}. Présence : part des games où le champion est pické ou
+        banni. Victoires : taux de victoire quand il est pické ({MIN_PICKS} picks minimum, les autres sont classés après).
       </p>
     </>
   )
 }
 
+type PlayerKey = 'games' | 'kda' | 'kills' | 'deaths' | 'assists' | 'cs' | 'damage' | 'winrate'
+
 function Players({ page, active }: { page: string; active: boolean }) {
-  const [sort, setSort] = useState<PlayerSort>('kda')
+  const [sort, onSort] = useSort<PlayerKey>('kda')
   const [role, setRole] = useState('all')
   const { data, error, refresh } = usePolling((s) => fetchPlayerStats([page], s), [page], 10 * 60_000, active)
 
@@ -119,23 +153,30 @@ function Players({ page, active }: { page: string; active: boolean }) {
     const min = Math.min(3, Math.ceil(maxGames * 0.3))
     const val = (p: (typeof data)[number]) => {
       const g = p.games || 1
-      switch (sort) {
+      switch (sort.key) {
+        case 'games':
+          return p.games
         case 'kills':
           return p.kills / g
-        case 'damage':
-          return p.damage / g
+        case 'deaths':
+          return -p.deaths / g // moins de morts = meilleur
+        case 'assists':
+          return p.assists / g
         case 'cs':
           return p.cs / g
+        case 'damage':
+          return p.damage / g
         case 'winrate':
           return p.wins / g
         default:
           return kdaNum(p.kills, p.deaths, p.assists)
       }
     }
+    const sign = sort.dir === 'best' ? -1 : 1
     return data
       .filter((p) => p.games >= min && (role === 'all' || p.role === role))
-      .sort((a, b) => val(b) - val(a))
-      .slice(0, 50)
+      .sort((a, b) => sign * (val(a) - val(b)) || b.games - a.games || a.name.localeCompare(b.name))
+      .slice(0, 100)
   }, [data, sort, role])
 
   if (error && !data) return <ErrorBox error={error} onRetry={refresh} />
@@ -149,29 +190,20 @@ function Players({ page, active }: { page: string; active: boolean }) {
         onChange={setRole}
         options={[{ value: 'all', label: 'Tous les rôles' }, ...ROLES.map((r) => ({ value: r as string, label: ROLE_FR[r] }))]}
       />
-      <Chips
-        value={sort}
-        onChange={setSort}
-        options={[
-          { value: 'kda', label: 'KDA' },
-          { value: 'kills', label: 'Kills' },
-          { value: 'damage', label: 'Dégâts' },
-          { value: 'cs', label: 'CS' },
-          { value: 'winrate', label: 'Victoires' },
-        ]}
-      />
       <div className="card flush">
         <div className="table-scroll">
           <table className="standings stats-table">
             <thead>
               <tr>
                 <th scope="col" className="left">Joueur</th>
-                <th scope="col">Parties</th>
-                <th scope="col">KDA</th>
-                <th scope="col">K/D/A</th>
-                <th scope="col">CS</th>
-                <th scope="col">Dég.</th>
-                <th scope="col">Vict.</th>
+                <SortTh k="games" label="Parties" sort={sort} onSort={onSort} />
+                <SortTh k="kda" label="KDA" sort={sort} onSort={onSort} />
+                <SortTh k="kills" label="K" sort={sort} onSort={onSort} />
+                <SortTh k="deaths" label="D" sort={sort} onSort={onSort} />
+                <SortTh k="assists" label="A" sort={sort} onSort={onSort} />
+                <SortTh k="cs" label="CS" sort={sort} onSort={onSort} />
+                <SortTh k="damage" label="Dég." sort={sort} onSort={onSort} />
+                <SortTh k="winrate" label="Vict." sort={sort} onSort={onSort} />
               </tr>
             </thead>
             <tbody>
@@ -191,9 +223,9 @@ function Players({ page, active }: { page: string; active: boolean }) {
                     </th>
                     <td>{p.games}</td>
                     <td className="strong">{fixed(kdaNum(p.kills, p.deaths, p.assists))}</td>
-                    <td>
-                      {fixed(p.kills / g)}/{fixed(p.deaths / g)}/{fixed(p.assists / g)}
-                    </td>
+                    <td>{fixed(p.kills / g)}</td>
+                    <td>{fixed(p.deaths / g)}</td>
+                    <td>{fixed(p.assists / g)}</td>
                     <td>{fixed(p.cs / g, 0)}</td>
                     <td>{kilo(p.damage / g)}</td>
                     <td>{pct(p.wins, p.games)}</td>
@@ -204,7 +236,10 @@ function Players({ page, active }: { page: string; active: boolean }) {
           </table>
         </div>
       </div>
-      <p className="footnote">Moyennes par partie. Seuls les joueurs avec assez de parties sont listés (au moins 3, ou 30 % du maximum du tournoi).</p>
+      <p className="footnote">
+        Touche une colonne pour trier du meilleur au plus faible (pour D, le moins de morts d’abord), une deuxième fois pour inverser. Moyennes par partie. Seuls les joueurs avec assez de parties sont listés (au moins
+        3, ou 30 % du maximum du tournoi).
+      </p>
     </>
   )
 }
