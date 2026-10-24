@@ -7,12 +7,13 @@ import { fetchRoster } from '../api/stats'
 import type { Match } from '../api/types'
 import { Empty, EloDelta, ErrorBox, LiveBadge, Loading, PageHeader, Segmented, Star, TeamLogo } from '../components/ui'
 import { useElo } from '../hooks/useElo'
+import { EloChart } from '../components/EloChart'
 import { usePolling } from '../hooks/usePolling'
 import { bestOfLabel, shortDate, statusLabel } from '../lib/format'
 import { href } from '../lib/router'
 import { useFavorites } from '../lib/store'
 
-type Tab = 'schedule' | 'roster'
+type Tab = 'schedule' | 'roster' | 'elo'
 
 export function TeamPage({ id }: { id: string }) {
   const [tab, setTab] = useState<Tab>('schedule')
@@ -23,7 +24,8 @@ export function TeamPage({ id }: { id: string }) {
     return onTeamsResolved(() => bump((n) => n + 1))
   }, [id])
   const team = teamOf(id)
-  const elo = usePolling(() => fetchElo(), [], null).data?.byId.get(id)
+  const eloAll = usePolling(() => fetchElo(), [], null).data
+  const elo = eloAll?.byId.get(id)
 
   const sched = usePolling(
     async (signal) => applyLive(await fetchTeamMatches(id, new Date(Date.now() - 150 * 86_400_000), signal), signal),
@@ -67,11 +69,17 @@ export function TeamPage({ id }: { id: string }) {
           options={[
             { value: 'schedule', label: 'Calendrier' },
             { value: 'roster', label: 'Effectif' },
+            { value: 'elo', label: 'Elo' },
           ]}
         />
       </div>
       <div className="content">
-        {tab === 'roster' ? (
+        {tab === 'elo' ? (
+          <div className="card">
+            <h3 className="card-title">Historique de l'Elo</h3>
+            {eloAll ? <EloChart points={eloAll.history.get(id) ?? []} /> : <Loading />}
+          </div>
+        ) : tab === 'roster' ? (
           <Roster id={id} />
         ) : sched.error && !sched.data ? (
           <ErrorBox error={sched.error} onRetry={sched.refresh} />

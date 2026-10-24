@@ -5,6 +5,7 @@ import { ROLE_FR } from '../api/leagues'
 import { resolveTeams, teamOf } from '../api/leaguepedia'
 import { ChampIcon, Empty, EloDelta, ErrorBox, Loading, PageHeader } from '../components/ui'
 import { usePlayerElo } from '../hooks/usePlayerElo'
+import { EloChart } from '../components/EloChart'
 import { usePolling } from '../hooks/usePolling'
 import { fixed, flag, kda, kdaNum, kilo, pct, shortDate } from '../lib/format'
 import { href } from '../lib/router'
@@ -22,7 +23,8 @@ export function PlayerPage({ id }: { id: string }) {
     return p ?? null
   }, [id])
   const games = usePolling((s) => fetchPlayerGames(id, s), [id])
-  const elo = usePolling(() => fetchPlayerElo(), [], null).data?.byId.get(id)
+  const eloAll = usePolling(() => fetchPlayerElo(), [], null).data
+  const elo = eloAll?.byId.get(id)
 
   const display = info.data?.id ?? id.replace(/\s*\(.*\)$/, '')
   const a = age(info.data?.birthdate)
@@ -58,6 +60,12 @@ export function PlayerPage({ id }: { id: string }) {
         {games.error && !games.data && <ErrorBox error={games.error} onRetry={games.refresh} />}
         {!games.data && !games.error && <Loading />}
         {games.data && games.data.length === 0 && <Empty>Aucune game enregistrée sur les 12 derniers mois.</Empty>}
+        {eloAll?.history.get(id) && (
+          <div className="card">
+            <h3 className="card-title">Historique de l'Elo</h3>
+            <EloChart points={eloAll.history.get(id)!} />
+          </div>
+        )}
         {games.data && games.data.length > 0 && <Stats games={games.data} />}
         {info.data && (info.data.twitter || info.data.stream) && (
           <p className="footnote">

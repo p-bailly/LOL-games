@@ -41,6 +41,7 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
   note de la moyenne de la ligue. Les réglages sont choisis par `--tune`, qui minimise l'erreur de prévision du
   vainqueur de chaque game sur l'historique (64 % de games bien prévues pour les équipes). Les Chances et les
   probabilités de victoire utilisent l'Elo des équipes.
+- **Historique de l'Elo** : courbe mois par mois (1 an, 3 ans ou tout) dans l'onglet Elo d'une équipe et sur la fiche d'un joueur.
 - **Variation d'Elo** : les séries terminées (liste des matchs, fiche de série, fiche d'équipe) affichent le gain ou la
   perte d'Elo de chaque équipe (somme de ses games) ; le tableau d'une game affiche celle de chaque joueur, et la fiche
   d'un joueur celle de ses dernières games. Historique conservé : 120 jours pour les séries, 90 jours pour les games,

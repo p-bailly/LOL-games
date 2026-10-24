@@ -1,5 +1,6 @@
 import { applyGame, PLAYER_DEFAULTS, type GameIn, type PlayerEloState, type PlayerParams } from '../lib/playerEloCore'
 import { cached, cargo, isoDate, list, num, q, sqlDate, str } from './cargo'
+import { withNow } from './elo'
 
 // Classement Elo des joueurs. Même principe que api/elo.ts : le calcul sur toutes les games depuis 2011 (89 000) est
 // fait par scripts/build-player-elo.mjs et rangé dans public/elo-players.json ; l'appli y ajoute les games jouées depuis.
@@ -54,6 +55,8 @@ export interface PlayerElo {
   params: PlayerParams
   /** Variation d'Elo des dix joueurs de chaque game récente, par identifiant de game. */
   recent: Map<string, number[]>
+  /** Note à la fin de chaque mois (mois depuis janvier 2011), jusqu'à aujourd'hui. */
+  history: Map<string, [number, number][]>
   added: number
 }
 
@@ -160,7 +163,9 @@ async function build(): Promise<PlayerElo> {
     p.majorRank = ++major
     p.roleRank = ++roleCount[p.role]
   }
-  return { players, byId: new Map(players.map((p) => [p.id, p])), builtAt: snap.builtAt, until: snap.until, quality: snap.quality, params, recent, added: added.length }
+  const history = new Map<string, [number, number][]>()
+  for (const p of players) history.set(p.id, withNow(snap.history[p.id] ?? [], monthOf(now), p.rating))
+  return { players, byId: new Map(players.map((p) => [p.id, p])), builtAt: snap.builtAt, until: snap.until, quality: snap.quality, params, recent, history, added: added.length }
 }
 
 /** Classement Elo des joueurs à jour (gardé 30 minutes en mémoire). */

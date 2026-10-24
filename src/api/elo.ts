@@ -54,11 +54,19 @@ export interface Elo {
   params: Params
   /** Variation d'Elo (équipe 1, équipe 2) des séries récentes, par identifiant de série. */
   recent: Map<string, [number, number]>
+  /** Note à la fin de chaque mois (mois depuis janvier 2011), jusqu'à aujourd'hui. */
+  history: Map<string, [number, number][]>
   /** Séries ajoutées par l'appli depuis le calcul. */
   added: number
 }
 
 const DAY = 86_400_000
+/** Historique mensuel complété par la note du moment. */
+export function withNow(h: [number, number][], month: number, rating: number): [number, number][] {
+  const out = h.filter(([m]) => m < month)
+  out.push([month, Math.round(rating)])
+  return out
+}
 const monthOf = (t: number) => {
   const d = new Date(t)
   return (d.getUTCFullYear() - 2011) * 12 + d.getUTCMonth()
@@ -166,7 +174,9 @@ async function build(): Promise<Elo> {
   const ratings: Record<string, number> = {}
   for (const t of teams) ratings[t.id] = t.rating
   for (const [from, to] of Object.entries(snap.alias)) if (ratings[to] !== undefined && ratings[from] === undefined) ratings[from] = ratings[to]
-  return { teams, byId, ratings, builtAt: snap.builtAt, until: snap.until, quality: snap.quality, params: snap.params, recent, added: added.length }
+  const history = new Map<string, [number, number][]>()
+  for (const t of teams) history.set(t.id, withNow(snap.history[t.id] ?? [], monthOf(now), t.rating))
+  return { teams, byId, ratings, builtAt: snap.builtAt, until: snap.until, quality: snap.quality, params: snap.params, recent, history, added: added.length }
 }
 
 /** Classement Elo mondial à jour (gardé 30 minutes en mémoire). */

@@ -2662,3 +2662,48 @@ a.player-link:hover strong {
 .sched-result .elo-delta {
   font-size: 12px;
 }
+
+/* Courbe d'Elo */
+.elo-chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  touch-action: pan-y;
+}
+.elo-chart-read {
+  margin: 10px 0 2px;
+  font-size: 18px;
+}
+.elo-chart-read .pos {
+  color: var(--pos);
+  font-size: 14px;
+}
+.elo-chart-read .neg {
+  color: var(--neg);
+  font-size: 14px;
+}
+.ec-grid {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+.ec-axis {
+  fill: var(--muted);
+  font-size: 10px;
+}
+.ec-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.ec-peak,
+.ec-dot {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+.ec-cursor {
+  stroke: var(--axis);
+  stroke-width: 1;
+}
