@@ -451,6 +451,229 @@ def p18_ecran(c):
     c.trait(base, "trait", close=True, width=2.6)
 
 
+
+# ---------- Baron Nashor et champions ----------
+
+def etoile_pts(cx, cy, r_ext, r_int, n, rot=-90):
+    pts = []
+    for k in range(2 * n):
+        r = r_ext if k % 2 == 0 else r_int
+        a = math.radians(rot + 180 * k / n)
+        pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    return pts
+
+
+def p19_baron_oeil(c):
+    ombre(c, 54, 86, 22)
+    flammes = etoile_pts(54, 52, 33, 24, 10)
+    c.remplir(flammes, "violet")
+    c.hachures(flammes, "violet.h", spacing=3.6, angle=-40)
+    c.trait(flammes, "trait", close=True, width=2.8)
+    oeil = chemin(("M", (28, 52)), ("Q", (54, 28), (80, 52)), ("Q", (54, 76), (28, 52)))
+    c.remplir(oeil, "page")
+    c.trait(oeil, "trait", close=True, width=2.6)
+    iris = ellipse(54, 52, 13, 13, 0, 0, 360, 32)
+    c.remplir(iris, "jaune")
+    c.hachures(iris, "jaune.h", spacing=2.8, angle=-40, width=1.1)
+    c.trait(iris, "trait", close=True, width=2.2)
+    c.remplir(ellipse(54, 52, 3.4, 11.5), "trait")
+    c.remplir(cercle(51, 46, 1.8, 10), "page")
+
+
+def p20_baron_crocs(c):
+    ombre(c, 54, 86, 22)
+    tete = [(28, 46), (30, 26), (42, 38), (54, 18), (66, 38), (78, 26), (80, 46), (78, 66), (54, 80), (30, 66)]
+    c.remplir(tete, "violet")
+    c.hachures(tete, "violet.h", spacing=3.4, angle=-40)
+    c.trait(tete, "trait", close=True, width=2.8)
+    bouche = ellipse(54, 62, 20, 11, 0, 0, 360, 36)
+    c.remplir(bouche, "trait")
+    c.remplir(chemin(("M", (44, 66)), ("Q", (54, 74), (64, 66)), ("Q", (54, 64), (44, 66))), "rouge")
+    for x in (39, 48, 60, 69):  # crocs du haut
+        c.remplir([(x - 3, 54), (x + 3, 54), (x, 63)], "page")
+    for x in (45, 63):  # crocs du bas
+        c.remplir([(x - 2.5, 71), (x + 2.5, 71), (x, 63)], "page")
+    c.trait(bouche, "trait", close=True, width=2.4)
+    for sgn in (-1, 1):
+        oeil = chemin(("M", (54 + sgn * 6, 44)), ("Q", (54 + sgn * 13, 36), (54 + sgn * 22, 42)), ("Q", (54 + sgn * 13, 50), (54 + sgn * 6, 44)))
+        c.remplir(oeil, "jaune")
+        c.trait(oeil, "trait", close=True, width=2.0)
+        c.remplir(ellipse(54 + sgn * 14, 43.5, 1.5, 4.2), "trait")
+
+
+def p21_baron_tentacule(c):
+    ombre(c, 54, 86, 20)
+    # Axe en spirale, largeur décroissante vers la pointe.
+    axe = []
+    for k in range(0, 61):
+        t = k / 60
+        a = math.radians(200 + 460 * t)
+        r = 25 - 17 * t
+        axe.append((54 + r * math.cos(a), 54 + 3 + r * math.sin(a), 8.5 * (1 - t) + 1.2))
+    gauche, droite = [], []
+    for i, (x, y, w) in enumerate(axe):
+        x2, y2, _ = axe[min(i + 1, len(axe) - 1)]
+        x1, y1, _ = axe[max(i - 1, 0)]
+        dx, dy = x2 - x1, y2 - y1
+        n = math.hypot(dx, dy) or 1
+        gauche.append((x - dy / n * w, y + dx / n * w))
+        droite.append((x + dy / n * w, y - dx / n * w))
+    corps = gauche + droite[::-1]
+    c.remplir(corps, "violet")
+    c.hachures(corps, "violet.h", spacing=3.4, angle=-40)
+    c.trait(corps, "trait", close=True, width=2.6)
+    for i in range(6, 56, 7):  # ventouses
+        x, y, w = axe[i]
+        if w > 3:
+            c.remplir(cercle(x, y, w * 0.42, 10), "rouge")
+            c.trait(cercle(x, y, w * 0.42, 10), "trait", close=True, width=1.4, passes=1)
+
+
+def p22_teemo(c):
+    ombre(c, 54, 84, 20)
+    pied = chemin(("M", (42, 52)), ("L", (42, 70)), ("Q", (42, 78), (54, 78)), ("Q", (66, 78), (66, 70)), ("L", (66, 52)))
+    c.remplir(pied, "page")
+    c.hachures(chemin(("M", (54, 52)), ("L", (66, 52)), ("L", (66, 70)), ("Q", (66, 78), (54, 78))), "brun.h", spacing=3.4, angle=-40)
+    c.trait(pied, "trait", close=True, width=2.6)
+    chapeau = ellipse(54, 50, 29, 26, 0, 180, 360, 30) + [(83, 50)]
+    chapeau = chapeau + [(25, 50)]
+    c.remplir(chapeau, "rouge")
+    c.hachures(ellipse(54, 50, 29, 26, 0, 270, 360, 12) + [(54, 50)], "rouge.h", spacing=3.4, angle=-40)
+    c.trait(chapeau, "trait", close=True, width=2.8)
+    for x, y, r in ((40, 36, 4.6), (58, 30, 5.4), (70, 42, 3.8), (47, 46, 2.6)):
+        c.remplir(cercle(x, y, r, 14), "page")
+        c.trait(cercle(x, y, r, 14), "trait", close=True, width=1.8, passes=1)
+    for sgn in (-1, 1):
+        c.remplir(cercle(54 + sgn * 6, 62, 2.2, 10), "trait")
+    c.trait(chemin(("M", (49, 68)), ("Q", (54, 72), (59, 68))), "trait", width=1.8, passes=1)
+
+
+def p23_ahri(c):
+    ombre(c, 54, 85, 20)
+    for sgn in (-1, 1):
+        oreille = [(54 + sgn * 9, 40), (54 + sgn * 24, 14), (54 + sgn * 29, 46)]
+        c.remplir(oreille, "orange")
+        c.trait(oreille, "trait", close=True, width=2.6)
+        c.remplir([(54 + sgn * 13, 38), (54 + sgn * 23, 23), (54 + sgn * 26, 42)], "rouge")
+    moitie = [(54, 34), (66, 35), (77, 46), (73, 64), (62, 75), (54, 80)]
+    tete = moitie + miroir(moitie)
+    c.remplir(tete, "page")
+    c.hachures(moitie + [(54, 34)], "orange.h", spacing=3.6, angle=-40, width=1.1)
+    c.trait(tete, "trait", close=True, width=2.8)
+    for sgn in (-1, 1):
+        c.remplir(chemin(("M", (54 + sgn * 6, 52)), ("Q", (54 + sgn * 12, 47), (54 + sgn * 19, 52)), ("Q", (54 + sgn * 12, 56), (54 + sgn * 6, 52))), "trait")
+        for dy in (-3, 1, 5):  # marques de joues
+            c.ligne((54 + sgn * 22, 60 + dy), (54 + sgn * 15, 61 + dy), "rouge.h", width=2.0, passes=1)
+    c.remplir([(51, 64), (57, 64), (54, 68)], "trait")
+    c.trait(chemin(("M", (54, 68)), ("L", (54, 71)), ("M", (48, 72)), ("Q", (54, 75), (60, 72)))[:3] + [(54, 71)], "trait", width=1.8, passes=1)
+    orbe = cercle(80, 72, 6.5, 18)
+    c.remplir(orbe, "rouge")
+    c.trait(orbe, "trait", close=True, width=2.2)
+    c.remplir(cercle(78, 70, 1.6, 8), "page")
+
+
+def p24_thresh(c):
+    ombre(c, 54, 86, 17)
+    c.trait(ellipse(54, 14, 4.5, 4.5, 0, 0, 360, 14), "trait", close=True, width=2.4)
+    for y in (22, 27):
+        c.trait(ellipse(54, y, 2.4, 3.2, 0, 0, 360, 10), "trait", close=True, width=1.8, passes=1)
+    toit = [(42, 36), (46, 31), (62, 31), (66, 36)]
+    c.remplir(toit, "gris")
+    c.trait(toit, "trait", close=True, width=2.4)
+    c.trait(ellipse(54, 30, 6, 2.6, 0, 180, 360, 10), "trait", width=2.2)
+    cage = [(40, 36), (68, 36), (66, 68), (42, 68)]
+    c.remplir(cage, "vert")
+    c.hachures([(54, 36), (68, 36), (66, 68), (54, 68)], "vert.h", spacing=3.2, angle=-40)
+    flamme = chemin(("M", (54, 62)), ("Q", (45, 56), (50, 48)), ("Q", (52, 52), (54, 42)), ("Q", (60, 50), (62, 56)), ("Q", (62, 62), (54, 62)))
+    c.remplir(flamme, "jaune")
+    c.trait(flamme, "trait", close=True, width=1.8, passes=1)
+    c.trait(cage, "trait", close=True, width=2.8)
+    for x in (47.5, 54, 60.5):
+        c.ligne((x - (54 - x) * 0.05, 36), (x, 68), "trait", width=1.8, passes=1)
+    base = [(38, 68), (70, 68), (66, 76), (42, 76)]
+    c.remplir(base, "gris")
+    c.trait(base, "trait", close=True, width=2.6)
+
+
+def p25_lux(c):
+    ombre(c, 54, 86, 20)
+    halo = etoile_pts(54, 52, 34, 14, 8)
+    c.remplir(halo, "or")
+    c.hachures(halo, "or.h", spacing=3.4, angle=-40)
+    c.trait(halo, "trait", close=True, width=2.8)
+    petit = etoile_pts(54, 52, 22, 9, 4, rot=-45)
+    c.remplir(petit, "page")
+    c.trait(petit, "trait", close=True, width=2.0, passes=1)
+    centre = cercle(54, 52, 8.5, 20)
+    c.remplir(centre, "bleu")
+    c.hachures(centre, "bleu.h", spacing=2.6, angle=-40, width=1.1)
+    c.trait(centre, "trait", close=True, width=2.4)
+
+
+def p26_yuumi(c):
+    ombre(c, 54, 85, 20)
+    for sgn in (-1, 1):
+        oreille = [(54 + sgn * 10, 40), (54 + sgn * 21, 16), (54 + sgn * 30, 42)]
+        c.remplir(oreille, "violet")
+        c.trait(oreille, "trait", close=True, width=2.6)
+        c.remplir([(54 + sgn * 14, 38), (54 + sgn * 21, 24), (54 + sgn * 26, 40)], "rouge")
+    tete = ellipse(54, 56, 28, 22, 0, 0, 360, 40)
+    c.remplir(tete, "page")
+    c.hachures(ellipse(54, 56, 28, 22, 0, -90, 90, 20) + [(54, 56)], "violet.h", spacing=3.6, angle=-40, width=1.1)
+    c.trait(tete, "trait", close=True, width=2.8)
+    for sgn in (-1, 1):
+        oeil = ellipse(54 + sgn * 11, 54, 6, 7.5, 0, 0, 360, 20)
+        c.remplir(oeil, "bleu")
+        c.trait(oeil, "trait", close=True, width=2.0)
+        c.remplir(cercle(54 + sgn * 11, 55, 3.2, 10), "trait")
+        c.remplir(cercle(54 + sgn * 11 - 1.5, 52, 1.5, 8), "page")
+        for dy in (-1, 4):
+            c.ligne((54 + sgn * 25, 62 + dy), (54 + sgn * 36, 60 + dy * 1.6), "trait", width=1.6, passes=1)
+    c.remplir([(51, 62), (57, 62), (54, 66)], "rouge")
+    c.trait([(51, 62), (57, 62), (54, 66)], "trait", close=True, width=1.6, passes=1)
+    c.trait(chemin(("M", (54, 66)), ("Q", (50, 71), (46, 68))), "trait", width=1.8, passes=1)
+    c.trait(chemin(("M", (54, 66)), ("Q", (58, 71), (62, 68))), "trait", width=1.8, passes=1)
+
+
+def p27_zed(c):
+    ombre(c, 54, 86, 20)
+    pts = etoile_pts(54, 52, 36, 9, 4, rot=-90)
+    c.remplir(pts, "gris")
+    c.hachures(pts, "gris.h", spacing=3.0, angle=-40)
+    c.trait(pts, "trait", close=True, width=3.0)
+    anneau = cercle(54, 52, 9, 24)
+    c.remplir(anneau, "rouge")
+    c.trait(anneau, "trait", close=True, width=2.6)
+    trou = cercle(54, 52, 4, 14)
+    c.remplir(trou, "page")
+    c.trait(trou, "trait", close=True, width=2.0)
+    for k in range(4):  # tranchants
+        a = math.radians(-90 + 90 * k)
+        c.ligne((54 + 12 * math.cos(a), 52 + 12 * math.sin(a)), (54 + 30 * math.cos(a), 52 + 30 * math.sin(a)), "trait", width=1.5, passes=1)
+
+
+def p28_amumu(c):
+    ombre(c, 54, 85, 19)
+    for sgn in (-1, 1):
+        oreille = [(54 + sgn * 17, 40), (54 + sgn * 26, 28), (54 + sgn * 25, 46)]
+        c.remplir(oreille, "page")
+        c.trait(oreille, "trait", close=True, width=2.4)
+    tete = ellipse(54, 54, 25, 24, 0, 0, 360, 40)
+    c.remplir(tete, "page")
+    c.hachures(ellipse(54, 54, 25, 24, 0, -90, 90, 20) + [(54, 54)], "brun.h", spacing=3.6, angle=-40, width=1.1)
+    c.trait(tete, "trait", close=True, width=2.8)
+    for y in (36, 70):  # bandages
+        c.trait(chemin(("M", (32, y - 1)), ("Q", (54, y + (5 if y < 50 else -5)), (76, y - 1))), "trait", width=2.2, passes=1)
+    c.trait([(60, 30), (76, 56)], "trait", width=2.0, passes=1)
+    c.trait([(34, 74), (50, 64)], "trait", width=2.0, passes=1)
+    for sgn in (-1, 1):
+        oeil = ellipse(54 + sgn * 10, 55, 5.6, 7.4, 0, 0, 360, 20)
+        c.remplir(oeil, "trait")
+        c.remplir(cercle(54 + sgn * 10 - 1.6, 52, 1.9, 8), "page")
+    c.remplir(ellipse(64, 66, 2.0, 3.4), "bleu")
+    c.trait(chemin(("M", (50, 66)), ("Q", (54, 64), (58, 66))), "trait", width=1.8, passes=1)
+
+
 _PAIR = re.compile(r"(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)")
 
 
@@ -493,6 +716,16 @@ PISTES = [
     ("heaume", "Heaume", p16_heaume),
     ("minion", "Minion mage", p17_minion),
     ("ecran", "Écran de match", p18_ecran),
+    ("baron-oeil", "Baron : l'œil", p19_baron_oeil),
+    ("baron-crocs", "Baron : la gueule", p20_baron_crocs),
+    ("baron-tentacule", "Baron : tentacule", p21_baron_tentacule),
+    ("teemo", "Teemo : le champignon", p22_teemo),
+    ("ahri", "Ahri : le renard", p23_ahri),
+    ("thresh", "Thresh : la lanterne", p24_thresh),
+    ("lux", "Lux : l'éclat de lumière", p25_lux),
+    ("yuumi", "Yuumi : la chatte", p26_yuumi),
+    ("zed", "Zed : le shuriken", p27_zed),
+    ("amumu", "Amumu : le petit momie", p28_amumu),
 ]
 
 if __name__ == "__main__":

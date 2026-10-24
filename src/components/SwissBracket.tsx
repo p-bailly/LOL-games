@@ -86,11 +86,6 @@ export function SwissBracket({ swiss }: { swiss: Swiss }) {
           </div>
         ))}
       </div>
-      <p className="footnote">
-        Une colonne par tour, une boîte par bilan (victoires-défaites avant le tour). 3 victoires qualifient pour les
-        quarts de finale, 3 défaites éliminent. BO3 quand une équipe peut se qualifier ou être éliminée. Les affiches
-        « TBD » dépendent des résultats du tour précédent. Touche une série pour ouvrir sa fiche.
-      </p>
     </div>
   )
 }

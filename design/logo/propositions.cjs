@@ -9,7 +9,7 @@ const liste = JSON.parse(fs.readFileSync(path.join(DIR, 'liste.json'), 'utf8'))
 
 ;(async () => {
   const navigateur = await chromium.launch()
-  const page = await navigateur.newPage({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 })
+  const page = await navigateur.newPage({ viewport: { width: 1850, height: 900 }, deviceScaleFactor: 1 })
   const cases = liste
     .map(([fichier, nom], i) => {
       const svg = fs.readFileSync(path.join(DIR, fichier), 'utf8').replace('<svg ', '<svg width="230" height="230" ')
@@ -18,7 +18,7 @@ const liste = JSON.parse(fs.readFileSync(path.join(DIR, 'liste.json'), 'utf8'))
     .join('')
   await page.setContent(`<style>
     body{margin:0;padding:24px;background:#faf7ef;font:600 20px system-ui,sans-serif;color:#2e3644}
-    .grille{display:grid;grid-template-columns:repeat(6,230px);gap:28px 30px;justify-content:center}
+    .grille{display:grid;grid-template-columns:repeat(7,230px);gap:28px 30px;justify-content:center}
     figure{margin:0;text-align:center}svg{display:block;filter:drop-shadow(0 3px 6px rgba(0,0,0,.18))}
     figcaption{margin-top:10px}b{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#2e3644;color:#fff;margin-right:6px}
   </style><div class="grille">${cases}</div>`)
