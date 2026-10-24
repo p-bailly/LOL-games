@@ -8,13 +8,15 @@ import type { FormEntry, Game, GameTeam, Match, MatchDetail, PickBan, PlayerLine
 // ---------- Équipes ----------
 
 interface TeamInfo {
+  /** Nom d'affichage : celui de la table Teams, sans la précision de Leaguepedia (« LYON (2024 American Team) » → « LYON »). */
+  name?: string
   code: string
   logo?: string
   region?: string
   at: number
 }
 
-const TEAMS_KEY = 'rift:teams:v1'
+const TEAMS_KEY = 'rift:teams:v2'
 const known = new Map<string, TeamInfo>()
 try {
   for (const [k, v] of Object.entries(JSON.parse(localStorage.getItem(TEAMS_KEY) ?? '{}') as Record<string, TeamInfo>)) known.set(k, v)
@@ -34,6 +36,9 @@ function saveTeams() {
 
 const TBD: Team = { id: 'TBD', name: 'À déterminer', code: 'TBD' }
 
+/** « LYON (2024 American Team) » → « LYON » : la parenthèse ne sert qu'à distinguer les pages homonymes. */
+const plain = (name: string) => name.replace(/\s*\([^)]*\)\s*$/, '') || name
+
 function initials(name: string): string {
   const words = name.replace(/[()]/g, '').split(/\s+/).filter(Boolean)
   return (words.length > 1 ? words.map((w) => w[0]).join('') : name).slice(0, 3).toUpperCase()
@@ -43,7 +48,8 @@ function initials(name: string): string {
 export function teamOf(name: string): Team {
   if (!name || name === 'TBD') return TBD
   const info = known.get(name)
-  return { id: name, name, code: info?.code || initials(name), logo: info?.logo, region: info?.region }
+  const shown = info?.name || plain(name)
+  return { id: name, name: shown, code: info?.code || initials(shown), logo: info?.logo, region: info?.region }
 }
 
 /** Retrouve abréviation, région et logo des équipes pas encore connues (ou connues depuis plus d'une semaine). */
@@ -55,11 +61,15 @@ export async function resolveTeams(names: string[]): Promise<void> {
   for (let i = 0; i < todo.length; i += 40) {
     const batch = todo.slice(i, i + 40)
     try {
-      const rows = await cargo({ tables: 'Teams', fields: 'Name,Short,Region,Image', where: `Name IN (${qList(batch)})`, limit: 100 })
-      for (const r of rows) {
-        const name = str(r.Name)
-        infos.set(name, { code: str(r.Short) || initials(name), region: str(r.Region) || undefined, at: Date.now() })
-        if (r.Image) files.set(name, str(r.Image))
+      // Le calendrier nomme une équipe par sa page (OverviewPage), qui peut différer de son nom (homonymes).
+      const list = qList(batch)
+      const rows = await cargo({ tables: 'Teams', fields: 'Name,OverviewPage,Short,Region,Image,IsDisbanded', where: `OverviewPage IN (${list}) OR Name IN (${list})`, limit: 200 })
+      for (const wanted of batch) {
+        const r = rows.find((x) => str(x.OverviewPage) === wanted) ?? rows.find((x) => str(x.Name) === wanted && num(x.IsDisbanded) !== 1) ?? rows.find((x) => str(x.Name) === wanted)
+        if (!r) continue
+        const shown = str(r.Name) || plain(wanted)
+        infos.set(wanted, { name: shown, code: str(r.Short) || initials(shown), region: str(r.Region) || undefined, at: Date.now() })
+        if (r.Image) files.set(wanted, str(r.Image))
       }
     } catch {
       return // on réessaiera au prochain affichage
@@ -67,7 +77,7 @@ export async function resolveTeams(names: string[]): Promise<void> {
   }
   const urls = await fileUrls([...files.values()])
   for (const name of todo) {
-    const info = infos.get(name) ?? { code: initials(name), at: Date.now() }
+    const info = infos.get(name) ?? { name: plain(name), code: initials(plain(name)), at: Date.now() }
     const file = files.get(name)
     info.logo = file ? urls.get(file) : undefined
     known.set(name, info)

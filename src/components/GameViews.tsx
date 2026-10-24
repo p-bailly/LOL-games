@@ -168,7 +168,8 @@ export function Scoreboard({ game }: { game: Game }) {
           value: s,
           label: (
             <span className="seg-team">
-              <TeamLogo team={game[s].team} size={18} /> {game[s].team.name}
+              <TeamLogo team={game[s].team} size={18} />
+              <span className="seg-name">{game[s].team.name}</span>
               {game[s].win && <span className="win-tag">V</span>}
             </span>
           ),

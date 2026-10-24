@@ -2455,3 +2455,23 @@ a.player-link:hover strong {
   min-width: 8px;
   font-size: 8px;
 }
+
+/* Aucun contenu ne doit élargir la page : seules les zones de défilement prévues (bracket, tableaux, pastilles) bougent. */
+.view {
+  overflow-x: hidden;
+}
+.segmented button {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.seg-team {
+  max-width: 100%;
+  min-width: 0;
+}
+.seg-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
