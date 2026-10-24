@@ -1,4 +1,4 @@
-"""Logo « au crayon » de LoL Live : un cristal hextech qui scintille.
+"""Logo « au crayon » de LoL Live : la tête du Baron Nashor.
 
 Style commun des applis (LoL Live, Basket Live, Scan, Météo, Nimbus, Mes applis), repris du logo de Météo
 (p-bailly/Meteo, design/logos/crayon/generer.py) : papier crème, contours au graphite repassés deux fois avec un léger
@@ -28,7 +28,9 @@ CRAYONS = {
     "jaune": ("#F0B429", "#E07A2E"),  # Météo
     "bleu": ("#8BB8DE", "#3E7CB8"),  # Nimbus
     "vert": ("#A8D08D", "#4F9A45"),  # Mes applis
-    "or": ("#EBD38E", "#C89B3C"),  # LoL Live
+    "or": ("#EBD38E", "#C89B3C"),  # (piste cristal)
+    "violet": ("#C9BBEA", "#7A5BC4"),  # LoL Live (le Baron)
+    "rouge": ("#F2A59E", "#D6453D"),
 }
 ROLES = {"trait": GRAPHITE, "ombre": GRAPHITE, "fond": PAPIER, "nuage": PAPIER, "page": BLANC}
 
@@ -168,37 +170,60 @@ def courbe(p0, p1, p2, n=10):
              (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t * t * p2[1]) for t in (k / n for k in range(n + 1))]
 
 
-def etoile(c, x, y, r):
-    """Petit éclat à quatre branches."""
-    c.ligne((x - r, y), (x + r, y), "trait", width=2.0)
-    c.ligne((x, y - r), (x, y + r), "trait", width=2.0)
+def chemin(*items):
+    """Points d'un chemin : ('M', p), ('L', p), ('Q', ctrl, p)."""
+    pts = []
+    for it in items:
+        if it[0] in "ML":
+            pts.append(it[1])
+        else:
+            pts += courbe(pts[-1], it[1], it[2])[1:]
+    return pts
+
+
+def cadrer(c, rayon=33.0, centre=(54.0, 54.0)):
+    """Centre le dessin et le réduit au besoin pour qu'il tienne dans le cercle sûr de l'icône adaptative Android
+    (66 sur la grille de 108). Les hachures débordent de leur forme : on mesure la forme (le découpage)."""
+    pair = re.compile(r"(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)")
+    xs, ys = [], []
+    for _sorte, d, _col, _alpha, _width, clip in c.elements:
+        for x, y in pair.findall(clip or d):
+            xs.append(float(x))
+            ys.append(float(y))
+    mx, my = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    k = min(1.0, rayon / max(math.hypot(x - mx, y - my) for x, y in zip(xs, ys)))
+    tr = lambda txt: pair.sub(lambda m: f"{(float(m[1]) - mx) * k + centre[0]:.1f} {(float(m[2]) - my) * k + centre[1]:.1f}", txt)
+    c.elements = [(a, tr(d), col, al, w, tr(cl) if cl else cl) for a, d, col, al, w, cl in c.elements]
 
 
 def dessin(c):
-    haut, droite, bas, gauche = (58, 28), (76, 49), (58, 80), (40, 49)
-    c.hachures(ellipse(58, 84, 15, 2.8), "ombre", spacing=2.4, angle=-20, width=1.0)
-    gemme = [haut, droite, bas, gauche]
-    c.remplir(gemme, "or")
-    # Facettes : la moitié droite est plus appuyée.
-    c.hachures([haut, droite, (58, 49)], "or.h", spacing=3.4, angle=-40)
-    c.hachures([(58, 49), droite, bas], "or.h", spacing=3.4, angle=-40)
-    c.trait(gemme, "trait", close=True)
-    c.ligne(gauche, droite, "trait", width=2.0)
-    c.ligne(haut, (49, 49), "trait", width=2.0)
-    c.ligne(haut, (67, 49), "trait", width=2.0)
-    c.ligne((49, 49), bas, "trait", width=2.0)
-    c.ligne((67, 49), bas, "trait", width=2.0)
-    # Éclats autour du cristal.
-    etoile(c, 30, 32, 4.5)
-    etoile(c, 87, 34, 3.2)
-    etoile(c, 83, 70, 4)
+    """Le Baron Nashor : une tête violette hérissée de pointes, des yeux jaunes à pupille fendue, une gueule à crocs."""
+    c.hachures(ellipse(54, 86, 22, 2.8), "ombre", spacing=2.4, angle=-20, width=1.0)
+    tete = [(28, 46), (30, 26), (42, 38), (54, 18), (66, 38), (78, 26), (80, 46), (78, 66), (54, 80), (30, 66)]
+    c.remplir(tete, "violet")
+    c.hachures(tete, "violet.h", spacing=3.4, angle=-40)
+    c.trait(tete, "trait", close=True, width=2.8)
+    bouche = ellipse(54, 62, 20, 11, 0, 0, 360, 36)
+    c.remplir(bouche, "trait")
+    c.remplir(chemin(("M", (44, 66)), ("Q", (54, 74), (64, 66)), ("Q", (54, 64), (44, 66))), "rouge")
+    for x in (39, 48, 60, 69):  # crocs du haut
+        c.remplir([(x - 3, 54), (x + 3, 54), (x, 63)], "page")
+    for x in (45, 63):  # crocs du bas
+        c.remplir([(x - 2.5, 71), (x + 2.5, 71), (x, 63)], "page")
+    c.trait(bouche, "trait", close=True, width=2.4)
+    for sgn in (-1, 1):
+        oeil = chemin(("M", (54 + sgn * 6, 44)), ("Q", (54 + sgn * 13, 36), (54 + sgn * 22, 42)), ("Q", (54 + sgn * 13, 50), (54 + sgn * 6, 44)))
+        c.remplir(oeil, "jaune")
+        c.trait(oeil, "trait", close=True, width=2.0)
+        c.remplir(ellipse(54 + sgn * 14, 43.5, 1.5, 4.2), "trait")
 
 
 if __name__ == "__main__":
     c = Crayon(11)
     dessin(c)
+    cadrer(c)
     with open(os.path.join(HERE, "logo.svg"), "w") as out:
-        out.write(c.svg("LoL Live : un cristal hextech"))
+        out.write(c.svg("LoL Live : le Baron Nashor"))
     note = ("    Logo au crayon (design/logo/logo.svg), généré par design/logo/generer.py : ne pas modifier à la main.\n"
             f"    Fond : ic_launcher_background {PAPIER}.")
     with open(os.path.join(DRAWABLE, "ic_launcher_foreground.xml"), "w") as out:
@@ -207,4 +232,4 @@ if __name__ == "__main__":
         out.write(c.drawable(note + "\n    Calque monochrome des icônes à thème d'Android 13+.", monochrome=True))
     # Icône de l'app web (onglet du navigateur, écran d'accueil) : la zone visible de l'icône, coins arrondis.
     with open(os.path.join(HERE, "..", "..", "public", "icon.svg"), "w") as out:
-        out.write(c.svg("LoL Live : un cristal hextech", view="18 18 72 72", coins=15.75))
+        out.write(c.svg("LoL Live : le Baron Nashor", view="18 18 72 72", coins=15.75))

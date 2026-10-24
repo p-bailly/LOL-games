@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Icône de notification (barre d'état) : cristal hextech, blanc sur transparent. -->
+<!-- Icône de notification (barre d'état) : tête du Baron Nashor, blanc sur transparent. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:pathData="M12,3L19.5,12L12,21L4.5,12ZM4.5,12H19.5M12,3L9,12L12,21M12,3L15,12L12,21"
+        android:pathData="M4.5,12L5,5.5L8.5,8.5L12,3.5L15.5,8.5L19,5.5L19.5,12L18.5,17L12,20.5L5.5,17ZM7.5,10.5L10.5,11M16.5,10.5L13.5,11M8,14.5L16,14.5"
         android:strokeWidth="1.7"
         android:strokeColor="#FFFFFFFF"
         android:strokeLineCap="round"
