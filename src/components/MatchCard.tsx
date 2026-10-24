@@ -5,7 +5,7 @@ import type { Match, Side } from '../api/types'
 import { useElo } from '../hooks/useElo'
 import { bestOfLabel, isDecider, statusLabel } from '../lib/format'
 import { href } from '../lib/router'
-import { LiveBadge, TeamLogo } from './ui'
+import { EloDelta, LiveBadge, TeamLogo } from './ui'
 
 /** Vrai pendant un court instant quand la valeur change (ex. game gagnée). */
 function useFlash(value: unknown): boolean {
@@ -23,7 +23,7 @@ function useFlash(value: unknown): boolean {
   return flash
 }
 
-function TeamRow({ side, n, match, fav, elo, chance }: { side: Side; n: 1 | 2; match: Match; fav: boolean; elo?: number; chance?: number }) {
+function TeamRow({ side, n, match, fav, elo, chance, change }: { side: Side; n: 1 | 2; match: Match; fav: boolean; elo?: number; chance?: number; change?: number }) {
   const flash = useFlash(side.score)
   const showScore = match.state !== 'pre' && side.score != null
   const lost = match.state === 'post' && match.winner !== undefined && match.winner !== n
@@ -35,7 +35,13 @@ function TeamRow({ side, n, match, fav, elo, chance }: { side: Side; n: 1 | 2; m
           {side.team.name}
           {fav && <span className="fav-mark" aria-label="Favori">★</span>}
         </span>
-        {elo !== undefined && <span className="gc-record" title="Note Elo">Elo {Math.round(elo)}</span>}
+        {change !== undefined ? (
+          <span className="gc-record">
+            Elo <EloDelta value={change} />
+          </span>
+        ) : (
+          elo !== undefined && <span className="gc-record" title="Note Elo">Elo {Math.round(elo)}</span>
+        )}
       </div>
       {chance !== undefined && <span className={`gc-prob ${chance >= 0.5 ? 'fav' : ''}`} title="Chances de gagner la série d'après l'Elo">{Math.round(chance * 100)} %</span>}
       {showScore && <span className={`gc-score ${flash ? 'flash' : ''}`}>{side.score}</span>}
@@ -49,13 +55,14 @@ export function MatchCard({ match, favorites }: { match: Match; favorites: strin
   const isFav = (s: Side) => favorites.includes(s.team.id)
   const elo = useElo()
   const odds = chances(match, elo)
+  const change = match.state === 'post' ? elo?.recent.get(match.id) : undefined
 
   return (
     <a className={`game-card ${live ? 'live' : ''} ${decider ? 'clutch' : ''}`} href={href.match(match.id)}>
       <div className="gc-main">
         <div className="gc-teams">
-          <TeamRow side={match.a} n={1} match={match} fav={isFav(match.a)} elo={odds?.ra} chance={odds?.pa} />
-          <TeamRow side={match.b} n={2} match={match} fav={isFav(match.b)} elo={odds?.rb} chance={odds ? 1 - odds.pa : undefined} />
+          <TeamRow side={match.a} n={1} match={match} fav={isFav(match.a)} elo={odds?.ra} chance={odds?.pa} change={change?.[0]} />
+          <TeamRow side={match.b} n={2} match={match} fav={isFav(match.b)} elo={odds?.rb} chance={odds ? 1 - odds.pa : undefined} change={change?.[1]} />
         </div>
         <div className="gc-status">
           {live && !match.estimated && <LiveBadge label={decider ? 'DÉCISIVE' : 'LIVE'} />}

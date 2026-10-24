@@ -43,7 +43,7 @@ function downloadSeries() {
     const page = cargo({
       tables: 'MatchSchedule=MS,Tournaments=T',
       join_on: 'MS.OverviewPage=T.OverviewPage',
-      fields: 'MS.Team1,MS.Team2,MS.Team1Score,MS.Team2Score,MS.Winner,MS.DateTime_UTC,MS.BestOf,T.League,T.Region,T.TournamentLevel,T.IsPlayoffs',
+      fields: 'MS.MatchId,MS.Team1,MS.Team2,MS.Team1Score,MS.Team2Score,MS.Winner,MS.DateTime_UTC,MS.BestOf,T.League,T.Region,T.TournamentLevel,T.IsPlayoffs',
       where: "MS.Winner IN (1,2) AND T.IsOfficial='1' AND T.TournamentLevel IN ('Primary','Secondary')",
       order_by: 'MS.DateTime_UTC,MS.MatchId',
       limit: PAGE,
@@ -91,6 +91,8 @@ for (const r of rows) {
   // Les compétitions internationales : Worlds et MSI portent parfois la région du pays hôte, d'où la liste.
   const intl = r.Region === 'International' || INTL.has(r.League) || /^Rift Rivals/.test(r.League || '')
   series.push({
+    id: r.MatchId,
+    major: r.TournamentLevel === 'Primary',
     t: Date.parse(r['DateTime UTC'].replace(' ', 'T') + 'Z'),
     a,
     b,
@@ -148,8 +150,11 @@ const month = (t) => {
   const d = new Date(t)
   return (d.getUTCFullYear() - 2011) * 12 + d.getUTCMonth()
 }
+const recent = {}
+const RECENT_FROM = series.at(-1).t - 120 * 86_400_000
 for (const s of series) {
-  applySeries(state, s, params)
+  const { da, db } = applySeries(state, s, params)
+  if (s.major && s.t >= RECENT_FROM && s.id) recent[s.id] = [Math.round(da * 10) / 10, Math.round(db * 10) / 10]
   const m = month(s.t)
   for (const id of [s.a, s.b]) {
     const h = (hist[id] ??= [])
@@ -170,8 +175,9 @@ for (const [id, s] of active) {
 const usedLeagues = Object.fromEntries(Object.entries(leagues).filter(([l]) => active.some(([, s]) => s.lg === l)))
 const aliasUsed = Object.fromEntries(Object.entries(alias).filter(([k]) => series.some((s) => s.a === k || s.b === k) || true).slice(0, 4000))
 mkdirSync(join(ROOT, 'public'), { recursive: true })
-const out = { v: 1, builtAt: new Date().toISOString(), until, params, teams, history, leagues: usedLeagues, alias: aliasUsed, quality: { logloss: +score.logloss.toFixed(4), accuracy: +score.accuracy.toFixed(4), n: score.n, intlAccuracy: +score.intlAccuracy.toFixed(4), intlN: score.intlN } }
+const out = { v: 1, builtAt: new Date().toISOString(), until, params, teams, history, leagues: usedLeagues, alias: aliasUsed, recent, quality: { logloss: +score.logloss.toFixed(4), accuracy: +score.accuracy.toFixed(4), n: score.n, intlAccuracy: +score.intlAccuracy.toFixed(4), intlN: score.intlN } }
 writeFileSync(join(ROOT, 'public', 'elo.json'), JSON.stringify(out))
+console.log(`${Object.keys(recent).length} séries récentes avec leur variation d'Elo`)
 console.log(`public/elo.json : ${active.length} équipes actives, ${(JSON.stringify(out).length / 1024).toFixed(0)} Ko`)
 const top = active.sort((x, y) => y[1].r - x[1].r).slice(0, 15)
 for (const [id, s] of top) console.log(`  ${Math.round(s.r)}  ${id}  (${s.lg}, ${s.n} games)`)

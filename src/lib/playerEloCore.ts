@@ -5,6 +5,8 @@
 // Même contrainte que eloCore.ts : syntaxe TypeScript effaçable seulement (Node exécute ce fichier tel quel).
 
 export interface GameIn {
+  /** Identifiant Leaguepedia de la game (pour retrouver les variations d'Elo de ses joueurs). */
+  id?: string
   /** Début de la game, en millisecondes. */
   t: number
   /** Les cinq joueurs de chaque équipe (identifiants Leaguepedia), dans l'ordre top, jungle, mid, bot, support. */
@@ -65,8 +67,11 @@ function leagueMean(state: PlayerEloState, league: string, day: number): number 
   return c >= 10 ? sum / c : BASE
 }
 
-/** Applique une game à l'état ; renvoie la chance qu'avait l'équipe A de la gagner. */
-export function applyGame(state: PlayerEloState, g: GameIn, p: PlayerParams): number {
+/**
+ * Applique une game à l'état ; renvoie la chance qu'avait l'équipe A de la gagner. `deltas`, s'il est donné, reçoit la
+ * variation de chacun des dix joueurs (les cinq de A puis les cinq de B, dans l'ordre top à support).
+ */
+export function applyGame(state: PlayerEloState, g: GameIn, p: PlayerParams, deltas?: number[]): number {
   const day = Math.floor(g.t / DAY)
   const ids = [g.a, g.b]
   // Joueurs nouveaux : ils démarrent à la moyenne de leurs coéquipiers déjà connus, sinon à celle de la ligue.
@@ -87,7 +92,9 @@ export function applyGame(state: PlayerEloState, g: GameIn, p: PlayerParams): nu
     const delta = side === 0 ? sa - pa : 1 - sa - (1 - pa)
     team.forEach((id, i) => {
       const s = state[id]
-      s.r += kOf(s.n, p) * weight * delta
+      const d = kOf(s.n, p) * weight * delta
+      s.r += d
+      deltas?.push(d)
       s.n++
       s.last = day
       s.role = i

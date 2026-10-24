@@ -3,6 +3,8 @@
 // Ne mettre ici que de la syntaxe TypeScript effaçable : Node exécute ce fichier tel quel.
 
 export interface SeriesIn {
+  /** Identifiant Leaguepedia de la série (pour retrouver sa variation d'Elo). */
+  id?: string
   /** Début de la série, en millisecondes. */
   t: number
   a: string
@@ -112,7 +114,7 @@ export function gameOrder(sa: number, sb: number): boolean[] {
  * et pèse pareil quel que soit le format de la série (BO1, BO3 ou BO5). `onGame` reçoit, avant chaque mise à jour,
  * la chance qu'avait A de gagner la game et son résultat (pour mesurer la qualité des prévisions).
  */
-export function applySeries(state: EloState, s: SeriesIn, p: Params, onGame?: (pa: number, aWon: boolean) => void): { ra: number; rb: number } {
+export function applySeries(state: EloState, s: SeriesIn, p: Params, onGame?: (pa: number, aWon: boolean) => void): { ra: number; rb: number; da: number; db: number } {
   const day = Math.floor(s.t / DAY)
   const touch = (id: string): TeamState => {
     let t = state[id]
@@ -148,7 +150,8 @@ export function applySeries(state: EloState, s: SeriesIn, p: Params, onGame?: (p
     t.last = day
     if (!s.intl) t.lg = s.league
   }
-  return { ra, rb }
+  // Variation de la série : somme des variations de ses games (hors retour vers la moyenne après une absence).
+  return { ra, rb, da: ta.r - ra, db: tb.r - rb }
 }
 
 export interface Score {

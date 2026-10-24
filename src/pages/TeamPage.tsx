@@ -5,7 +5,8 @@ import { applyLive } from '../api/live'
 import { fetchElo } from '../api/elo'
 import { fetchRoster } from '../api/stats'
 import type { Match } from '../api/types'
-import { Empty, ErrorBox, LiveBadge, Loading, PageHeader, Segmented, Star, TeamLogo } from '../components/ui'
+import { Empty, EloDelta, ErrorBox, LiveBadge, Loading, PageHeader, Segmented, Star, TeamLogo } from '../components/ui'
+import { useElo } from '../hooks/useElo'
 import { usePolling } from '../hooks/usePolling'
 import { bestOfLabel, shortDate, statusLabel } from '../lib/format'
 import { href } from '../lib/router'
@@ -123,6 +124,7 @@ function Schedule({ matches, teamId }: { matches: Match[]; teamId: string }) {
 }
 
 function SchedRow({ m, teamId }: { m: Match; teamId: string }) {
+  const elo = useElo()
   const mineFirst = m.a.team.id === teamId
   const me = mineFirst ? m.a : m.b
   const opp = mineFirst ? m.b : m.a
@@ -144,6 +146,7 @@ function SchedRow({ m, teamId }: { m: Match; teamId: string }) {
             <>
               <span className={`wl ${won ? 'w' : 'l'}`}>{won ? 'V' : 'D'}</span>
               {me.score}-{opp.score}
+              <EloDelta value={elo?.recent.get(m.id)?.[mineFirst ? 0 : 1]} />
             </>
           ) : m.state === 'in' ? (
             <>

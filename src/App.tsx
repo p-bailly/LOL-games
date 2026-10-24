@@ -4,9 +4,10 @@ import { href, TABS, useRoute, type TabName } from './lib/router'
 import { MatchPage } from './pages/MatchPage'
 import { MatchesPage } from './pages/MatchesPage'
 import { PlayerPage } from './pages/PlayerPage'
-import { StandingsPage } from './pages/StandingsPage'
+import { RankingPage } from './pages/RankingPage'
 import { StatsPage } from './pages/StatsPage'
 import { TeamPage } from './pages/TeamPage'
+import { TournamentPage } from './pages/TournamentPage'
 import { TeamsPage } from './pages/TeamsPage'
 
 const icon = (d: ReactNode) => (
@@ -21,9 +22,15 @@ const TAB_META: Record<TabName, { label: string; icon: ReactNode }> = {
     // Deux épées croisées
     icon: icon(<path d="M5 4l14 14M19 4L5 18M3.5 5.5l2-2M18.5 20.5l2-2M3.5 18.5l2 2M18.5 3.5l2 2" />),
   },
-  standings: {
+  tournament: {
+    label: 'Tournoi',
+    // Une coupe
+    icon: icon(<path d="M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4v1.5A3 3 0 0 0 7 10.5M17 6h3v1.5a3 3 0 0 1-3 3M12 14v4M8.5 20h7" />),
+  },
+  ranking: {
     label: 'Classement',
-    icon: icon(<path d="M4 6h16M4 12h16M4 18h16M8 3v18" />),
+    // Un podium
+    icon: icon(<path d="M3.5 20.5h17M4.5 20.5V13h5v7.5M9.5 20.5V8h5v12.5M14.5 20.5v-9h5v9" />),
   },
   stats: {
     label: 'Stats',
@@ -39,8 +46,10 @@ function TabPage({ tab, active }: { tab: TabName; active: boolean }) {
   switch (tab) {
     case 'matches':
       return <MatchesPage active={active} />
-    case 'standings':
-      return <StandingsPage active={active} />
+    case 'tournament':
+      return <TournamentPage active={active} />
+    case 'ranking':
+      return <RankingPage active={active} />
     case 'stats':
       return <StatsPage active={active} />
     case 'teams':

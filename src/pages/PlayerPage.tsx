@@ -3,7 +3,8 @@ import { fetchPlayerElo, ROLE_NAMES } from '../api/eloPlayers'
 import { fetchPlayerGames, fetchPlayerInfo, type PlayerGame } from '../api/stats'
 import { ROLE_FR } from '../api/leagues'
 import { resolveTeams, teamOf } from '../api/leaguepedia'
-import { ChampIcon, Empty, ErrorBox, Loading, PageHeader } from '../components/ui'
+import { ChampIcon, Empty, EloDelta, ErrorBox, Loading, PageHeader } from '../components/ui'
+import { usePlayerElo } from '../hooks/usePlayerElo'
 import { usePolling } from '../hooks/usePolling'
 import { fixed, flag, kda, kdaNum, kilo, pct, shortDate } from '../lib/format'
 import { href } from '../lib/router'
@@ -78,6 +79,7 @@ export function PlayerPage({ id }: { id: string }) {
 }
 
 function Stats({ games }: { games: PlayerGame[] }) {
+  const recent = usePlayerElo()?.recent
   const sum = useMemo(() => {
     const t = { g: games.length, k: 0, d: 0, a: 0, cs: 0, dmg: 0, w: 0 }
     for (const x of games) {
@@ -168,6 +170,7 @@ function Stats({ games }: { games: PlayerGame[] }) {
                 <span className="sched-result">
                   <span className={`wl ${x.win ? 'w' : 'l'}`}>{x.win ? 'V' : 'D'}</span>
                   {x.kills}/{x.deaths}/{x.assists}
+                  <EloDelta value={recent?.get(x.gameId)?.[(x.side - 1) * 5 + (x.slot - 1)]} />
                 </span>
               </a>
             </li>

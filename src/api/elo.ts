@@ -18,6 +18,8 @@ interface Snapshot {
   /** Ligue → [région, niveau : P = ligue majeure, S = secondaire]. */
   leagues: Record<string, [string, string]>
   alias: Record<string, string>
+  /** Variation d'Elo des deux équipes pour les séries des derniers mois : identifiant de la série → [A, B]. */
+  recent?: Record<string, [number, number]>
   quality: { logloss: number; accuracy: number; n: number; intlAccuracy: number; intlN: number }
 }
 
@@ -50,6 +52,8 @@ export interface Elo {
   until: number
   quality: Snapshot['quality']
   params: Params
+  /** Variation d'Elo (équipe 1, équipe 2) des séries récentes, par identifiant de série. */
+  recent: Map<string, [number, number]>
   /** Séries ajoutées par l'appli depuis le calcul. */
   added: number
 }
@@ -62,13 +66,15 @@ const monthOf = (t: number) => {
 
 const INTL = new Set(['World Championship', 'Mid-Season Invitational', 'First Stand', 'Esports World Cup', 'Esports Nations Cup', 'Asian Games 2018', 'International Wildcard Invitational', 'Mid-Season Cup 2020'])
 
-async function newSeries(since: number, alias: Record<string, string>, leagues: Snapshot['leagues']): Promise<SeriesIn[]> {
-  const out: SeriesIn[] = []
+type NewSeries = SeriesIn & { major: boolean }
+
+async function newSeries(since: number, alias: Record<string, string>, leagues: Snapshot['leagues']): Promise<NewSeries[]> {
+  const out: NewSeries[] = []
   for (let page = 0; page < 6; page++) {
     const rows = await cargo({
       tables: 'MatchSchedule=MS,Tournaments=T',
       join_on: 'MS.OverviewPage=T.OverviewPage',
-      fields: 'MS.Team1,MS.Team2,MS.Team1Score,MS.Team2Score,MS.Winner,MS.DateTime_UTC,MS.BestOf,T.League,T.Region,T.TournamentLevel,T.IsPlayoffs',
+      fields: 'MS.MatchId,MS.Team1,MS.Team2,MS.Team1Score,MS.Team2Score,MS.Winner,MS.DateTime_UTC,MS.BestOf,T.League,T.Region,T.TournamentLevel,T.IsPlayoffs',
       where: `MS.Winner IN (1,2) AND T.IsOfficial='1' AND T.TournamentLevel IN ('Primary','Secondary') AND MS.DateTime_UTC > ${q(sqlDate(new Date(since)))}`,
       order_by: 'MS.DateTime_UTC,MS.MatchId',
       limit: 500,
@@ -93,6 +99,8 @@ async function newSeries(since: number, alias: Record<string, string>, leagues: 
       const league = str(r.League) || '?'
       if (r.League && !leagues[league]) leagues[league] = [str(r.Region), str(r.TournamentLevel) === 'Primary' ? 'P' : 'S']
       out.push({
+        id: str(r.MatchId),
+        major: str(r.TournamentLevel) === 'Primary',
         t: new Date(isoDate(str(r.DateTime_UTC))).getTime(),
         a,
         b,
@@ -116,13 +124,17 @@ async function build(): Promise<Elo> {
   const state: EloState = {}
   for (const [id, [r, n, last, lg, peak, w, l]] of Object.entries(snap.teams)) state[id] = { r, n, last, lg, peak, w, l }
   const leagues = { ...snap.leagues }
-  let added: SeriesIn[] = []
+  let added: NewSeries[] = []
   try {
     added = await newSeries(snap.until, snap.alias, leagues)
   } catch {
     /* hors-ligne ou quota : on garde le calcul du jour de la construction */
   }
-  for (const s of added) applySeries(state, s, snap.params ?? DEFAULTS)
+  const recent = new Map<string, [number, number]>(Object.entries(snap.recent ?? {}))
+  for (const s of added) {
+    const { da, db } = applySeries(state, s, snap.params ?? DEFAULTS)
+    if (s.major && s.id) recent.set(s.id, [Math.round(da * 10) / 10, Math.round(db * 10) / 10])
+  }
 
   const now = Date.now()
   const nowMonth = monthOf(snap.until)
@@ -154,7 +166,7 @@ async function build(): Promise<Elo> {
   const ratings: Record<string, number> = {}
   for (const t of teams) ratings[t.id] = t.rating
   for (const [from, to] of Object.entries(snap.alias)) if (ratings[to] !== undefined && ratings[from] === undefined) ratings[from] = ratings[to]
-  return { teams, byId, ratings, builtAt: snap.builtAt, until: snap.until, quality: snap.quality, params: snap.params, added: added.length }
+  return { teams, byId, ratings, builtAt: snap.builtAt, until: snap.until, quality: snap.quality, params: snap.params, recent, added: added.length }
 }
 
 /** Classement Elo mondial à jour (gardé 30 minutes en mémoire). */

@@ -14,6 +14,8 @@ interface Snapshot {
   players: Record<string, Row>
   history: Record<string, [number, number][]>
   leagues: Record<string, [string, string]>
+  /** Variation d'Elo des dix joueurs (équipe 1 puis équipe 2, top à support) des games des derniers mois, par game. */
+  recent?: Record<string, number[]>
   quality: { logloss: number; accuracy: number; n: number; intlAccuracy: number; intlN: number }
 }
 
@@ -50,6 +52,8 @@ export interface PlayerElo {
   until: number
   quality: Snapshot['quality']
   params: PlayerParams
+  /** Variation d'Elo des dix joueurs de chaque game récente, par identifiant de game. */
+  recent: Map<string, number[]>
   added: number
 }
 
@@ -61,13 +65,15 @@ const monthOf = (t: number) => {
 }
 export const plainName = (id: string) => id.replace(/\s*\([^)]*\)\s*$/, '') || id
 
-async function newGames(since: number, leagues: Snapshot['leagues']): Promise<GameIn[]> {
-  const out: GameIn[] = []
+type NewGame = GameIn & { major: boolean }
+
+async function newGames(since: number, leagues: Snapshot['leagues']): Promise<NewGame[]> {
+  const out: NewGame[] = []
   for (let page = 0; page < 6; page++) {
     const rows = await cargo({
       tables: 'ScoreboardGames=SG,Tournaments=T',
       join_on: 'SG.OverviewPage=T.OverviewPage',
-      fields: 'SG.Team1,SG.Team2,SG.Team1Players,SG.Team2Players,SG.Winner,SG.DateTime_UTC,T.League,T.Region,T.TournamentLevel,T.IsPlayoffs',
+      fields: 'SG.GameId,SG.Team1,SG.Team2,SG.Team1Players,SG.Team2Players,SG.Winner,SG.DateTime_UTC,T.League,T.Region,T.TournamentLevel,T.IsPlayoffs',
       where: `SG.Winner IN (1,2) AND T.IsOfficial='1' AND T.TournamentLevel IN ('Primary','Secondary') AND SG.DateTime_UTC > ${q(sqlDate(new Date(since)))}`,
       order_by: 'SG.DateTime_UTC,SG.GameId',
       limit: 500,
@@ -81,6 +87,8 @@ async function newGames(since: number, leagues: Snapshot['leagues']): Promise<Ga
       const league = str(r.League) || '?'
       if (r.League && !leagues[league]) leagues[league] = [str(r.Region), str(r.TournamentLevel) === 'Primary' ? 'P' : 'S']
       out.push({
+        id: str(r.GameId),
+        major: str(r.TournamentLevel) === 'Primary',
         t: new Date(isoDate(str(r.DateTime_UTC))).getTime(),
         a,
         b,
@@ -104,14 +112,19 @@ async function build(): Promise<PlayerElo> {
   const state: PlayerEloState = {}
   for (const [id, [r, n, last, lg, team, role, peak, w, l]] of Object.entries(snap.players)) state[id] = { r, n, last, lg, team, role, peak, w, l }
   const leagues = { ...snap.leagues }
-  let added: GameIn[] = []
+  let added: NewGame[] = []
   try {
     added = await newGames(snap.until, leagues)
   } catch {
     /* hors-ligne ou quota : on garde le calcul du jour de la construction */
   }
   const params = snap.params ?? PLAYER_DEFAULTS
-  for (const g of added) applyGame(state, g, params)
+  const recent = new Map<string, number[]>(Object.entries(snap.recent ?? {}))
+  for (const g of added) {
+    const deltas: number[] = []
+    applyGame(state, g, params, deltas)
+    if (g.major && g.id) recent.set(g.id, deltas.map((d) => Math.round(d * 10) / 10))
+  }
 
   const now = Date.now()
   const nowMonth = monthOf(snap.until)
@@ -147,7 +160,7 @@ async function build(): Promise<PlayerElo> {
     p.majorRank = ++major
     p.roleRank = ++roleCount[p.role]
   }
-  return { players, byId: new Map(players.map((p) => [p.id, p])), builtAt: snap.builtAt, until: snap.until, quality: snap.quality, params, added: added.length }
+  return { players, byId: new Map(players.map((p) => [p.id, p])), builtAt: snap.builtAt, until: snap.until, quality: snap.quality, params, recent, added: added.length }
 }
 
 /** Classement Elo des joueurs à jour (gardé 30 minutes en mémoire). */

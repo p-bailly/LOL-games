@@ -19,13 +19,13 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
   - avant la série : forme sur 5 séries et face-à-face ; replay et lien de la retransmission.
 - **Direct** (avec une clé LoL Esports, voir plus bas) : score de la série en temps réel, et pour la game en cours
   l'or, les kills, les objectifs, les 10 joueurs (niveau, KDA, CS, vie) et la courbe d'écart d'or.
-- **Classement** de chaque tournoi (séries et games gagnées, série en cours) ou, pour les playoffs, les séries tour
+- **Tournoi** (onglet Tournoi) : classement de chaque tournoi (séries et games gagnées, série en cours) ou, pour les playoffs, les séries tour
   par tour. Pour les **Worlds**, la **phase suisse** en bracket comme sur l'affiche officielle (une colonne par tour,
   une boîte par bilan 0-0, 1-0, 0-1, 2-0…, BO1 ou BO3, affiches « TBD » des tours à venir), plus une vue « Bilans »
   (résultat et adversaire de chaque équipe à chaque tour ; qualifiées, en course, éliminées).
 - Quand une compétition internationale est en cours (Worlds, MSI, First Stand), elle passe **en premier** : dans
-  les filtres de ligues, dans Classement et Stats (choisie d'office) et dans la liste des matchs du jour.
-- **Chances** (onglet Classement) : simulation de 4 000 tournois d'après la force des équipes. Pour un classement de
+  les filtres de ligues, dans Tournoi et Stats (choisie d'office) et dans la liste des matchs du jour.
+- **Chances** (onglet Tournoi) : simulation de 4 000 tournois d'après la force des équipes. Pour un classement de
   ligue : la probabilité de finir à chaque place. Pour les Worlds : celle de se qualifier (quarts), d'atteindre les
   demies, la finale et de **gagner le titre**. La fiche d'une série affiche aussi les chances de gagner la série.
   Force des équipes : l'Elo mondial ci-dessus (estimation, pas un pronostic officiel ; les égalités sont tirées au sort et les quarts, quand ils ne sont pas
@@ -41,6 +41,10 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
   note de la moyenne de la ligue. Les réglages sont choisis par `--tune`, qui minimise l'erreur de prévision du
   vainqueur de chaque game sur l'historique (64 % de games bien prévues pour les équipes). Les Chances et les
   probabilités de victoire utilisent l'Elo des équipes.
+- **Variation d'Elo** : les séries terminées (liste des matchs, fiche de série, fiche d'équipe) affichent le gain ou la
+  perte d'Elo de chaque équipe (somme de ses games) ; le tableau d'une game affiche celle de chaque joueur, et la fiche
+  d'un joueur celle de ses dernières games. Historique conservé : 120 jours pour les séries, 90 jours pour les games,
+  ligues principales seulement.
 - **Stats** d'un tournoi : champions (présence, picks, bans, taux de victoire) et joueurs (KDA, kills, CS, dégâts).
 - **Équipes** : favoris, effectif et calendrier de chaque équipe. **Joueurs** : fiche, stats sur 12 mois,
   champions les plus joués, dernières games.
@@ -152,7 +156,7 @@ src/
   hooks/usePolling.ts  chargement + rafraîchissement automatique (pause en arrière-plan)
   lib/                 formatage, favoris / réglages (localStorage), routage par hash, notifications, Nimbus
   components/          cartes de série, draft, tableau des scores, direct, alertes…
-  pages/               Matchs, Série, Classement, Stats, Équipes, Équipe, Joueur
+  pages/               Matchs, Série, Tournoi, Classement (Elo), Stats, Équipes, Équipe, Joueur
 public/                manifest PWA, service worker, icônes
 android/               projet Android (Capacitor) qui embarque l'app web
 design/logo/           logo au crayon : generer.py (SVG, icône adaptative), puis png.cjs (PNG)

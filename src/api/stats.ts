@@ -186,6 +186,9 @@ export interface PlayerGame {
   team: string
   opponent: string
   role: string
+  /** Côté (1 : bleu, équipe 1 ; 2 : rouge) et place dans l'équipe (1 à 5, top à support) : retrouvent sa variation d'Elo. */
+  side: number
+  slot: number
 }
 
 /** Games d'un joueur sur les 12 derniers mois, de la plus récente à la plus ancienne. */
@@ -194,7 +197,7 @@ export async function fetchPlayerGames(link: string, signal?: AbortSignal): Prom
   const rows = await cargoCached(
     {
       tables: 'ScoreboardPlayers',
-      fields: 'GameId,DateTime_UTC,Champion,Kills,Deaths,Assists,CS,DamageToChampions,PlayerWin,Team,TeamVs,Role',
+      fields: 'GameId,DateTime_UTC,Champion,Kills,Deaths,Assists,CS,DamageToChampions,PlayerWin,Team,TeamVs,Role,Side,Role_Number',
       where: `Link=${q(link)} AND DateTime_UTC >= ${q(since)}`,
       order_by: 'DateTime_UTC DESC',
       limit: 300,
@@ -218,6 +221,8 @@ export async function fetchPlayerGames(link: string, signal?: AbortSignal): Prom
       team: str(r.Team),
       opponent: str(r.TeamVs),
       role: str(r.Role),
+      side: num(r.Side) ?? 1,
+      slot: num(r.Role_Number) ?? 1,
     }
   })
 }

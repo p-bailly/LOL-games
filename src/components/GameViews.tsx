@@ -3,7 +3,8 @@ import type { Game, GameTeam, PlayerLine } from '../api/types'
 import { ROLES, ROLE_FR } from '../api/leagues'
 import { fixed, kda, kilo, kdaNum } from '../lib/format'
 import { href } from '../lib/router'
-import { ChampIcon, ItemIcon, Segmented, TeamLogo } from './ui'
+import { usePlayerElo } from '../hooks/usePlayerElo'
+import { ChampIcon, EloDelta, ItemIcon, Segmented, TeamLogo } from './ui'
 
 // ---------- Draft : bans et picks ----------
 
@@ -120,7 +121,7 @@ function DraftOrder({ game }: { game: Game }) {
 
 // ---------- Tableau des scores ----------
 
-function PlayerRow({ p, teamKills }: { p: PlayerLine; teamKills: number }) {
+function PlayerRow({ p, teamKills, delta }: { p: PlayerLine; teamKills: number; delta?: number }) {
   const share = teamKills ? Math.round(((p.kills + p.assists) / teamKills) * 100) : 0
   return (
     <tr>
@@ -136,6 +137,9 @@ function PlayerRow({ p, teamKills }: { p: PlayerLine; teamKills: number }) {
       <td className="strong">
         {p.kills}/{p.deaths}/{p.assists}
         <small className="muted"> {kda(p.kills, p.deaths, p.assists)}</small>
+      </td>
+      <td>
+        <EloDelta value={delta} />
       </td>
       <td>{p.cs}</td>
       <td>{kilo(p.gold)}</td>
@@ -158,6 +162,8 @@ function PlayerRow({ p, teamKills }: { p: PlayerLine; teamKills: number }) {
 export function Scoreboard({ game }: { game: Game }) {
   const [side, setSide] = useState<'blue' | 'red'>('blue')
   const t = game[side]
+  // Variation d'Elo de chaque joueur sur cette game : les cinq de l'équipe bleue (équipe 1), puis les cinq de la rouge.
+  const deltas = usePlayerElo()?.recent.get(game.id)
   const total = (f: (p: PlayerLine) => number) => t.players.reduce((s, p) => s + f(p), 0)
   return (
     <div className="boxscore">
@@ -181,6 +187,7 @@ export function Scoreboard({ game }: { game: Game }) {
             <tr>
               <th scope="col">Joueur</th>
               <th scope="col">K/D/A</th>
+              <th scope="col">Elo</th>
               <th scope="col">CS</th>
               <th scope="col">Or</th>
               <th scope="col">Dég.</th>
@@ -190,8 +197,8 @@ export function Scoreboard({ game }: { game: Game }) {
             </tr>
           </thead>
           <tbody>
-            {t.players.map((p) => (
-              <PlayerRow key={p.link + p.champion} p={p} teamKills={t.kills} />
+            {t.players.map((p, i) => (
+              <PlayerRow key={p.link + p.champion} p={p} teamKills={t.kills} delta={deltas?.[(side === 'blue' ? 0 : 5) + i]} />
             ))}
           </tbody>
           <tfoot>
@@ -200,6 +207,7 @@ export function Scoreboard({ game }: { game: Game }) {
               <td>
                 {total((p) => p.kills)}/{total((p) => p.deaths)}/{total((p) => p.assists)}
               </td>
+              <td />
               <td>{total((p) => p.cs)}</td>
               <td>{kilo(total((p) => p.gold))}</td>
               <td>{kilo(total((p) => p.damage))}</td>

@@ -40,7 +40,7 @@ function downloadGames() {
     const page = cargo({
       tables: 'ScoreboardGames=SG,Tournaments=T',
       join_on: 'SG.OverviewPage=T.OverviewPage',
-      fields: 'SG.Team1,SG.Team2,SG.Team1Players,SG.Team2Players,SG.Winner,SG.DateTime_UTC,T.League,T.Region,T.TournamentLevel,T.IsPlayoffs',
+      fields: 'SG.GameId,SG.Team1,SG.Team2,SG.Team1Players,SG.Team2Players,SG.Winner,SG.DateTime_UTC,T.League,T.Region,T.TournamentLevel,T.IsPlayoffs',
       where: "T.IsOfficial='1' AND T.TournamentLevel IN ('Primary','Secondary')",
       order_by: 'SG.DateTime_UTC,SG.GameId',
       limit: PAGE,
@@ -63,6 +63,8 @@ for (const r of downloadGames()) {
   if (a.length !== 5 || b.length !== 5 || a.some((x) => !x) || b.some((x) => !x) || (winner !== 1 && winner !== 2)) continue
   const league = r.League || '?'
   games.push({
+    id: r.GameId,
+    major: r.TournamentLevel === 'Primary',
     t: Date.parse(r['DateTime UTC'].replace(' ', 'T') + 'Z'),
     a,
     b,
@@ -118,8 +120,12 @@ const month = (t) => {
   const d = new Date(t)
   return (d.getUTCFullYear() - 2011) * 12 + d.getUTCMonth()
 }
+const recent = {}
+const RECENT_FROM = games.at(-1).t - 90 * 86_400_000
 for (const g of games) {
-  applyGame(state, g, params)
+  const deltas = []
+  applyGame(state, g, params, g.major && g.t >= RECENT_FROM ? deltas : undefined)
+  if (deltas.length === 10 && g.id) recent[g.id] = deltas.map((d) => Math.round(d * 10) / 10)
   const m = month(g.t)
   for (const id of [...g.a, ...g.b]) {
     const h = (hist[id] ??= [])
@@ -137,8 +143,9 @@ const history = {}
 for (const [id] of active.sort((x, y) => y[1].r - x[1].r).slice(0, 700)) history[id] = hist[id].slice(-36)
 const usedLeagues = Object.fromEntries(Object.entries(leagues).filter(([l]) => active.some(([, s]) => s.lg === l)))
 mkdirSync(join(ROOT, 'public'), { recursive: true })
-const out = { v: 1, builtAt: new Date().toISOString(), until, params, players, history, leagues: usedLeagues, quality: { logloss: +score.logloss.toFixed(4), accuracy: +score.accuracy.toFixed(4), n: score.n, intlAccuracy: +score.intlAccuracy.toFixed(4), intlN: score.intlN } }
+const out = { v: 1, builtAt: new Date().toISOString(), until, params, players, history, leagues: usedLeagues, recent, quality: { logloss: +score.logloss.toFixed(4), accuracy: +score.accuracy.toFixed(4), n: score.n, intlAccuracy: +score.intlAccuracy.toFixed(4), intlN: score.intlN } }
 writeFileSync(join(ROOT, 'public', 'elo-players.json'), JSON.stringify(out))
+console.log(`${Object.keys(recent).length} games récentes avec la variation d'Elo de leurs joueurs`)
 console.log(`public/elo-players.json : ${active.length} joueurs actifs, ${(JSON.stringify(out).length / 1024).toFixed(0)} Ko`)
 const ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']
 for (const [id, s] of active.sort((x, y) => y[1].r - x[1].r).slice(0, 15)) console.log(`  ${Math.round(s.r)}  ${id}  (${ROLES[s.role]}, ${s.team}, ${s.n} games)`)

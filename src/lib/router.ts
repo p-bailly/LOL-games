@@ -5,14 +5,15 @@ import { useSyncExternalStore } from 'react'
 
 export type Route =
   | { name: 'matches' }
-  | { name: 'standings' }
+  | { name: 'tournament' }
+  | { name: 'ranking' }
   | { name: 'stats' }
   | { name: 'teams' }
   | { name: 'match'; id: string }
   | { name: 'team'; id: string }
   | { name: 'player'; id: string }
 
-export const TABS = ['matches', 'standings', 'stats', 'teams'] as const
+export const TABS = ['matches', 'tournament', 'ranking', 'stats', 'teams'] as const
 export type TabName = (typeof TABS)[number]
 
 function parse(hash: string): Route {
@@ -24,6 +25,7 @@ function parse(hash: string): Route {
       return { name: 'matches' }
     }
   }
+  if (name === 'standings') return { name: 'tournament' } // ancien nom de l'onglet
   if ((TABS as readonly string[]).includes(name)) return { name: name as TabName }
   return { name: 'matches' }
 }
