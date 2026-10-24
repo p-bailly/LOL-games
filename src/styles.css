@@ -2722,3 +2722,6 @@ a.player-link:hover strong {
 .scroll-end {
   height: 1px;
 }
+.games-section[data-anchor] {
+  scroll-margin-top: calc(var(--header-h) + 8px);
+}

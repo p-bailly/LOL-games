@@ -37,30 +37,32 @@ function useDay(day: string, leagues: string[] | undefined, active: boolean) {
   )
 }
 
-/** Séries d'un jour rangées en sections : mes équipes, en direct, à venir, terminées. */
+/**
+ * Séries d'un jour rangées en sections, dans l'ordre de la journée : terminées (en haut, en remontant), en direct,
+ * à venir. Les équipes favorites ne passent pas devant.
+ */
 function sectionsOf(matches: Match[], filter: Filter, favs: string[], intlOn: boolean): [string, Match[]][] {
   const isFav = (m: Match) => favs.includes(m.a.team.id) || favs.includes(m.b.team.id)
   const shown = matches.filter((m) => (filter === 'live' ? m.state === 'in' : filter === 'fav' ? isFav(m) : true))
-  const favMatches = filter === 'all' ? shown.filter(isFav) : []
-  const rest = shown.filter((m) => !favMatches.includes(m))
-  // L'international d'abord quand il est en cours, puis par heure.
-  const rank = (m: Match) => (intlOn && m.league === 'intl' ? 0 : 1)
-  const byTime = (a: Match, b: Match) => rank(a) - rank(b) || a.date.localeCompare(b.date)
+  const byTime = (a: Match, b: Match) => a.date.localeCompare(b.date)
+  // L'international d'abord quand il est en cours, pour les séries en direct seulement.
+  const byLive = (a: Match, b: Match) => Number(intlOn && b.league === 'intl') - Number(intlOn && a.league === 'intl') || byTime(a, b)
   return [
-    ['Mes équipes', favMatches.sort(byTime)],
-    ['En direct', rest.filter((m) => m.state === 'in').sort(byTime)],
-    ['À venir', rest.filter((m) => m.state === 'pre').sort(byTime)],
-    ['Terminés', rest.filter((m) => m.state === 'post').sort(byTime)],
+    ['Terminés', shown.filter((m) => m.state === 'post').sort(byTime)],
+    ['En direct', shown.filter((m) => m.state === 'in').sort(byLive)],
+    ['À venir', shown.filter((m) => m.state === 'pre').sort(byTime)],
   ]
 }
 
-function Sections({ sections, favs }: { sections: [string, Match[]][]; favs: string[] }) {
+/** `anchor` : la première section qui n'est pas terminée est repérée pour que la liste s'ouvre dessus. */
+function Sections({ sections, favs, anchor }: { sections: [string, Match[]][]; favs: string[]; anchor?: boolean }) {
+  const first = sections.find(([t, l]) => t !== 'Terminés' && l.length)?.[0]
   return (
     <>
       {sections.map(
         ([title, list]) =>
           list.length > 0 && (
-            <section key={title} className="games-section">
+            <section key={title} className="games-section" data-anchor={anchor && title === first ? '' : undefined}>
               <h2 className="section-title">{title}</h2>
               <div className="games-grid">
                 {list.map((m) => (
@@ -141,6 +143,32 @@ export function MatchesPage({ active }: { active: boolean }) {
   )
   const anyShown = sections.some(([, l]) => l.length)
 
+  // À l'ouverture d'un jour, la liste se place sur les séries en direct ou à venir : les terminées sont au-dessus.
+  const top = useRef<HTMLDivElement>(null)
+  const placed = useRef('')
+  const stop = useRef<(() => void) | undefined>(undefined)
+  useEffect(() => {
+    const key = `${selected}|${league}|${filter}`
+    const box = top.current
+    if (!data || !box || placed.current === key) return
+    placed.current = key
+    const go = () => box.querySelector('[data-anchor]')?.scrollIntoView({ block: 'start' })
+    go()
+    // Les cartes grandissent en se complétant (Elo, logos) : on se replace jusqu'au premier geste de l'utilisateur.
+    const done = () => {
+      ro.disconnect()
+      for (const e of ['pointerdown', 'wheel', 'touchstart', 'keydown']) window.removeEventListener(e, done, true)
+      clearTimeout(timer)
+    }
+    const ro = new ResizeObserver(go)
+    ro.observe(box)
+    for (const e of ['pointerdown', 'wheel', 'touchstart', 'keydown']) window.addEventListener(e, done, true)
+    const timer = setTimeout(done, 5000)
+    stop.current?.()
+    stop.current = done
+  }, [data, selected, league, filter])
+  useEffect(() => () => stop.current?.(), [])
+
   // Jours suivants : quand on arrive en bas de la liste, le jour d'après s'ajoute dessous.
   const [more, setMore] = useState<string[]>([])
   const [loaded, setLoaded] = useState<string[]>([])
@@ -213,7 +241,9 @@ export function MatchesPage({ active }: { active: boolean }) {
                 : 'Ajoutez vos équipes favorites dans l’onglet « Équipes ».'}
           </Empty>
         )}
-        <Sections sections={sections} favs={favs} />
+        <div ref={top}>
+          <Sections sections={sections} favs={favs} anchor />
+        </div>
         {filter !== 'live' &&
           more.map((d) => (
             <NextDay key={d} day={d} leagues={leagues} filter={filter} favs={favs} intlOn={order.intlOn} active={active} onLoaded={onLoaded} />
