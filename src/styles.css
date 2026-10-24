@@ -2725,3 +2725,11 @@ a.player-link:hover strong {
 .games-section[data-anchor] {
   scroll-margin-top: calc(var(--header-h) + 8px);
 }
+.bm.tbd.waiting {
+  color: var(--text);
+  opacity: 1;
+}
+.bm.tbd.waiting .bm-team.right {
+  color: var(--muted);
+  opacity: 0.7;
+}

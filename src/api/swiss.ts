@@ -164,6 +164,18 @@ function buildBracket(rounds: Round[], rows: Map<string, SwissRow>, teams: numbe
         })
         .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))
       const bestOf = known.find((m) => before(m.a.id, k).w === w && before(m.a.id, k).l === l)?.bestOf ?? (w === SWISS_WINS - 1 || l === SWISS_WINS - 1 ? 3 : 1)
+      // Équipes qui ont fini leurs tours précédents avec ce bilan et attendent leur adversaire du tour k+1 :
+      // elles occupent déjà une place de la boîte, le temps que la paire soit connue.
+      const waiting = [...rows.values()]
+        .filter((r) => !r.cells[k] && before(r.team.id, k).w === w && before(r.team.id, k).l === l && w + l === k && r.cells.slice(0, k).every((c) => c?.win !== undefined))
+        .map((r) => r.team)
+      const half: BracketMatch[] = []
+      for (const t of waiting) {
+        const open = half.find((h) => !h.b && half.length >= slots - mine.length)
+        if (open) open.b = t
+        else half.push({ a: t })
+      }
+      mine.push(...half.slice(0, Math.max(0, slots - mine.length)))
       while (mine.length < slots) mine.push({})
       boxes.push({ wins: w, losses: l, bestOf, matches: mine })
     }

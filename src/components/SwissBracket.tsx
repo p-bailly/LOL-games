@@ -6,6 +6,19 @@ import { useFavorites } from '../lib/store'
 import { TeamLogo } from './ui'
 
 function Row({ m, favs }: { m: BracketMatch; favs: string[] }) {
+  if (m.a && !m.b) {
+    // Équipe déjà qualifiée pour ce bilan, adversaire pas encore connu.
+    return (
+      <div className="bm tbd waiting">
+        <span className={`bm-team ${favs.includes(m.a.id) ? 'fav' : ''}`}>
+          <b>{m.a.code}</b>
+          <TeamLogo team={m.a} size={22} />
+        </span>
+        <span className="bm-mid">vs</span>
+        <span className="bm-team right">TBD</span>
+      </div>
+    )
+  }
   if (!m.a || !m.b) {
     return (
       <div className="bm tbd">
@@ -51,7 +64,7 @@ function Box({ box, favs }: { box: BracketBox; favs: string[] }) {
       </h4>
       <div className="bbox-body">
         {box.matches.map((m, i) => (
-          <Row key={m.id ?? `tbd${i}`} m={m} favs={favs} />
+          <Row key={m.id ?? m.a?.id ?? `tbd${i}`} m={m} favs={favs} />
         ))}
       </div>
       <footer>BO{box.bestOf}</footer>
