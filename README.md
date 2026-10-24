@@ -44,7 +44,7 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
 - **Variation d'Elo** : les séries terminées (liste des matchs, fiche de série, fiche d'équipe) affichent le gain ou la
   perte d'Elo de chaque équipe (somme de ses games) ; le tableau d'une game affiche celle de chaque joueur, et la fiche
   d'un joueur celle de ses dernières games. Historique conservé : 120 jours pour les séries, 90 jours pour les games,
-  ligues principales seulement.
+  toutes les compétitions officielles prises en compte par l'Elo.
 - **Stats** d'un tournoi : champions (présence, picks, bans, taux de victoire) et joueurs (KDA, kills, CS, dégâts).
 - **Équipes** : favoris, effectif et calendrier de chaque équipe. **Joueurs** : fiche, stats sur 12 mois,
   champions les plus joués, dernières games.

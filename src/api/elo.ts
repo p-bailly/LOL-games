@@ -133,7 +133,7 @@ async function build(): Promise<Elo> {
   const recent = new Map<string, [number, number]>(Object.entries(snap.recent ?? {}))
   for (const s of added) {
     const { da, db } = applySeries(state, s, snap.params ?? DEFAULTS)
-    if (s.major && s.id) recent.set(s.id, [Math.round(da * 10) / 10, Math.round(db * 10) / 10])
+    if (s.id) recent.set(s.id, [Math.round(da * 10) / 10, Math.round(db * 10) / 10])
   }
 
   const now = Date.now()

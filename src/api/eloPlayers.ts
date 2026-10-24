@@ -123,7 +123,7 @@ async function build(): Promise<PlayerElo> {
   for (const g of added) {
     const deltas: number[] = []
     applyGame(state, g, params, deltas)
-    if (g.major && g.id) recent.set(g.id, deltas.map((d) => Math.round(d * 10) / 10))
+    if (g.id) recent.set(g.id, deltas.map((d) => Math.round(d * 10) / 10))
   }
 
   const now = Date.now()

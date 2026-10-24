@@ -154,7 +154,7 @@ const recent = {}
 const RECENT_FROM = series.at(-1).t - 120 * 86_400_000
 for (const s of series) {
   const { da, db } = applySeries(state, s, params)
-  if (s.major && s.t >= RECENT_FROM && s.id) recent[s.id] = [Math.round(da * 10) / 10, Math.round(db * 10) / 10]
+  if (s.t >= RECENT_FROM && s.id) recent[s.id] = [Math.round(da * 10) / 10, Math.round(db * 10) / 10]
   const m = month(s.t)
   for (const id of [s.a, s.b]) {
     const h = (hist[id] ??= [])

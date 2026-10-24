@@ -124,7 +124,7 @@ const recent = {}
 const RECENT_FROM = games.at(-1).t - 90 * 86_400_000
 for (const g of games) {
   const deltas = []
-  applyGame(state, g, params, g.major && g.t >= RECENT_FROM ? deltas : undefined)
+  applyGame(state, g, params, g.t >= RECENT_FROM ? deltas : undefined)
   if (deltas.length === 10 && g.id) recent[g.id] = deltas.map((d) => Math.round(d * 10) / 10)
   const m = month(g.t)
   for (const id of [...g.a, ...g.b]) {
