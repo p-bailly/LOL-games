@@ -142,8 +142,7 @@ function LeagueTable({ p }: { p: LeagueProjection }) {
 function Notes({ sims, children }: { sims: number; children: ReactNode }) {
   return (
     <p className="footnote">
-      {children} Simulation de {sims.toLocaleString('fr-FR')} tournois. Force des équipes : classement de type Elo calculé sur leurs résultats des 18 derniers mois, avec un niveau de départ
-      propre à chaque région (LCK, LPL, LEC, LCS, LCP, CBLOL, LFL) : c’est une estimation, pas un pronostic officiel.
+      {children} Simulation de {sims.toLocaleString('fr-FR')} tournois. Force des équipes : Elo mondial (onglet Elo du classement), calculé sur toutes les séries depuis 2011 : c’est une estimation, pas un pronostic officiel.
     </p>
   )
 }

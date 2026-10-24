@@ -3,6 +3,7 @@ import { fetchStandings, fetchTournamentRounds } from '../api/stats'
 import { leagueByKey } from '../api/leagues'
 import { buildSwiss } from '../api/swiss'
 import type { StandingRow } from '../api/types'
+import { EloRanking } from '../components/EloRanking'
 import { Projection } from '../components/Projection'
 import { SwissBracket } from '../components/SwissBracket'
 import { SwissTable } from '../components/SwissTable'
@@ -17,6 +18,7 @@ type View = 'table' | 'swiss' | 'balances' | 'projection' | 'rounds'
 
 export function StandingsPage({ active }: { active: boolean }) {
   const picker = useTournamentPicker(active)
+  const [mode, setMode] = useState<'tournament' | 'elo'>('tournament')
   const { tournament } = picker
   const [view, setView] = useState<View | undefined>()
 
@@ -31,7 +33,21 @@ export function StandingsPage({ active }: { active: boolean }) {
 
   return (
     <>
-      <PageHeader title="Classement" subtitle={tournament?.name ?? league?.full ?? ' '} />
+      <PageHeader title="Classement" subtitle={mode === 'elo' ? 'Elo mondial' : (tournament?.name ?? league?.full ?? ' ')} />
+      <div className="toolbar">
+        <Segmented<'tournament' | 'elo'>
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: 'tournament', label: 'Par tournoi' },
+            { value: 'elo', label: 'Elo mondial' },
+          ]}
+        />
+      </div>
+      {mode === 'elo' ? (
+        <EloRanking active={active} />
+      ) : (
+        <>
       <TournamentPicker picker={picker} />
       <div className="toolbar">
         <Segmented<View>
@@ -103,6 +119,8 @@ export function StandingsPage({ active }: { active: boolean }) {
           <p className="footnote">V–D : séries gagnées et perdues · Games : manches gagnées et perdues · Série : V = victoires, D = défaites de suite</p>
         )}
       </div>
+        </>
+      )}
     </>
   )
 }

@@ -1,3 +1,4 @@
+import { fetchElo } from './elo'
 import { allLeagueNames, leagueOfName } from './leagues'
 import { cargo, num, persisted, q, qList, sqlDate, str } from './cargo'
 
@@ -93,12 +94,14 @@ export function computeRatings(series: Row[]): Ratings {
   return r
 }
 
-/** Forces de toutes les équipes suivies (gardées 12 h sur l'appareil). */
-export function fetchRatings(): Promise<Ratings> {
-  return persisted('ratings:v1', 12 * 3_600_000, async () => computeRatings(await loadSeries()))
+/** Forces de toutes les équipes : le classement Elo mondial ; à défaut, un calcul rapide sur les 18 derniers mois. */
+export async function fetchRatings(): Promise<Ratings> {
+  try {
+    return (await fetchElo()).ratings
+  } catch {
+    return persisted('ratings:v1', 12 * 3_600_000, async () => computeRatings(await loadSeries()))
+  }
 }
 
 /** Force d'une équipe ; à défaut, la moyenne. */
 export const ratingOf = (r: Ratings, team: string) => r[team] ?? BASE
-
-

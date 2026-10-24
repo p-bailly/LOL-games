@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchTeamMatches, onTeamsResolved, resolveTeams, teamOf } from '../api/leaguepedia'
 import { ROLE_FR } from '../api/leagues'
 import { applyLive } from '../api/live'
+import { fetchElo } from '../api/elo'
 import { fetchRoster } from '../api/stats'
 import type { Match } from '../api/types'
 import { Empty, ErrorBox, LiveBadge, Loading, PageHeader, Segmented, Star, TeamLogo } from '../components/ui'
@@ -21,6 +22,7 @@ export function TeamPage({ id }: { id: string }) {
     return onTeamsResolved(() => bump((n) => n + 1))
   }, [id])
   const team = teamOf(id)
+  const elo = usePolling(() => fetchElo(), [], null).data?.byId.get(id)
 
   const sched = usePolling(
     async (signal) => applyLive(await fetchTeamMatches(id, new Date(Date.now() - 150 * 86_400_000), signal), signal),
@@ -50,6 +52,11 @@ export function TeamPage({ id }: { id: string }) {
           <h2>{team.name}</h2>
           <p className="muted">{[team.code, team.region].filter(Boolean).join(' · ')}</p>
           {sched.data && <Record matches={sched.data} id={id} />}
+          {elo && (
+            <p className="team-elo">
+              Elo mondial : <strong>{Math.round(elo.rating)}</strong> · {elo.majorRank ?? elo.rank}{(elo.majorRank ?? elo.rank) === 1 ? 'er' : 'e'}{elo.majorRank ? ' des ligues majeures' : ''}
+            </p>
+          )}
         </div>
       </section>
       <div className="toolbar sticky">

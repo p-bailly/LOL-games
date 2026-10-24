@@ -27,9 +27,17 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
 - **Chances** (onglet Classement) : simulation de 4 000 tournois d'après la force des équipes. Pour un classement de
   ligue : la probabilité de finir à chaque place. Pour les Worlds : celle de se qualifier (quarts), d'atteindre les
   demies, la finale et de **gagner le titre**. La fiche d'une série affiche aussi les chances de gagner la série.
-  Force des équipes : classement de type Elo sur leurs 18 derniers mois, avec un niveau de départ par région
-  (estimation, pas un pronostic officiel ; les égalités sont tirées au sort et les quarts, quand ils ne sont pas
+  Force des équipes : l'Elo mondial ci-dessus (estimation, pas un pronostic officiel ; les égalités sont tirées au sort et les quarts, quand ils ne sont pas
   connus, tirés meilleur bilan contre moins bon).
+- **Elo mondial** (onglet Classement) : toutes les équipes actives, de la meilleure à la plus faible, avec leur
+  note, leur évolution sur 90 jours, leurs séries et leur taux de victoires. Le calcul porte sur **toutes les
+  séries de Leaguepedia depuis 2011** (57 000 séries, ligues majeures et secondaires) : `scripts/build-elo.mjs`
+  le fait une fois et écrit `public/elo.json` ; l'appli y ajoute les séries jouées depuis. Une équipe démarre à la
+  moyenne de sa ligue, son K est élevé au début (96) puis baisse vers 18 pour que la note converge vite, les
+  compétitions internationales comptent double, et une longue absence rapproche la note de la moyenne de la ligue.
+  Ces réglages ont été choisis par `node scripts/build-elo.mjs --tune`, qui minimise l'erreur de prévision sur
+  l'historique (66 % des vainqueurs de séries bien prévus). Les Chances et les probabilités de victoire utilisent
+  cette note.
 - **Stats** d'un tournoi : champions (présence, picks, bans, taux de victoire) et joueurs (KDA, kills, CS, dégâts).
 - **Équipes** : favoris, effectif et calendrier de chaque équipe. **Joueurs** : fiche, stats sur 12 mois,
   champions les plus joués, dernières games.

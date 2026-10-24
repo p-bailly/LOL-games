@@ -2519,3 +2519,72 @@ a.player-link:hover strong {
   font-size: 11.5px;
   text-align: center;
 }
+
+/* Classement Elo mondial */
+.elo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.elo-row {
+  display: grid;
+  grid-template-columns: 30px 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+.elo-list li:first-child .elo-row {
+  border-top: 0;
+}
+.elo-rank {
+  text-align: right;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.elo-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.elo-name strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.elo-name small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11.5px;
+}
+.elo-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+.elo-score strong {
+  font-size: 17px;
+}
+.elo-score small {
+  font-size: 11.5px;
+  font-weight: 650;
+}
+.elo-score .pos {
+  color: var(--pos);
+}
+.elo-score .neg {
+  color: var(--neg);
+}
+.btn.more {
+  align-self: center;
+}
+
+.team-elo {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--text-2);
+}
