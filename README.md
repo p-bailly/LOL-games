@@ -1,4 +1,4 @@
-# Rift Live 🔮
+# LoL Live 🔮
 
 Application perso pour suivre les **matchs de League of Legends pro** : scores, direct, drafts (picks et bans),
 tableaux des scores, classements, équipes et joueurs. Même esprit que *Basket Live* (l'appli NBA) : web app
@@ -71,7 +71,7 @@ Projet perso, sans lien avec Riot Games, LoL Esports ni Leaguepedia. *League of 
 
 1. Ouvre le lien sur le téléphone Android et télécharge le fichier.
 2. Ouvre-le : Android demande d'autoriser l'installation depuis le navigateur (« sources inconnues ») — accepte.
-3. L'appli **Rift Live** apparaît avec les autres applis.
+3. L'appli **LoL Live** apparaît avec les autres applis.
 
 L'APK est reconstruit automatiquement par GitHub Actions (`.github/workflows/android.yml`) à chaque push sur la
 branche par défaut ; il suffit de le retélécharger pour mettre à jour (il s'installe par-dessus l'ancien).

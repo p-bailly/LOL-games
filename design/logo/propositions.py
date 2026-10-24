@@ -1,4 +1,4 @@
-"""Propositions de logos « au crayon » pour Rift Live : une dizaine de pistes, dans le style commun des applis
+"""Propositions de logos « au crayon » pour LoL Live : une dizaine de pistes, dans le style commun des applis
 (voir generer.py : papier crème, contours au graphite repassés deux fois, aplat léger puis hachures appuyées).
 
 Écrit design/logo/propositions/NN-nom.svg. Les PNG et la planche se font avec propositions.cjs.
@@ -737,7 +737,7 @@ if __name__ == "__main__":
         cadrer(c)
         fichier = f"{i:02d}-{cle}.svg"
         with open(os.path.join(OUT, fichier), "w") as f:
-            f.write(c.svg(f"Rift Live : {nom}", view="18 18 72 72", coins=15.75))
+            f.write(c.svg(f"LoL Live : {nom}", view="18 18 72 72", coins=15.75))
         liste.append((fichier, nom))
         print(fichier, nom)
     with open(os.path.join(OUT, "liste.json"), "w") as f:

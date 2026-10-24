@@ -1,6 +1,6 @@
-"""Logo « au crayon » de Rift Live : un cristal hextech qui scintille.
+"""Logo « au crayon » de LoL Live : un cristal hextech qui scintille.
 
-Style commun des applis (Rift Live, Basket Live, Scan, Météo, Nimbus, Mes applis), repris du logo de Météo
+Style commun des applis (LoL Live, Basket Live, Scan, Météo, Nimbus, Mes applis), repris du logo de Météo
 (p-bailly/Meteo, design/logos/crayon/generer.py) : papier crème, contours au graphite repassés deux fois avec un léger
 tremblé, un crayon de couleur par appli (aplat léger puis hachures appuyées), ombres hachurées. Le tremblé est tiré au
 hasard mais reproductible : modifier le script puis le relancer.
@@ -28,7 +28,7 @@ CRAYONS = {
     "jaune": ("#F0B429", "#E07A2E"),  # Météo
     "bleu": ("#8BB8DE", "#3E7CB8"),  # Nimbus
     "vert": ("#A8D08D", "#4F9A45"),  # Mes applis
-    "or": ("#EBD38E", "#C89B3C"),  # Rift Live
+    "or": ("#EBD38E", "#C89B3C"),  # LoL Live
 }
 ROLES = {"trait": GRAPHITE, "ombre": GRAPHITE, "fond": PAPIER, "nuage": PAPIER, "page": BLANC}
 
@@ -198,7 +198,7 @@ if __name__ == "__main__":
     c = Crayon(11)
     dessin(c)
     with open(os.path.join(HERE, "logo.svg"), "w") as out:
-        out.write(c.svg("Rift Live : un cristal hextech"))
+        out.write(c.svg("LoL Live : un cristal hextech"))
     note = ("    Logo au crayon (design/logo/logo.svg), généré par design/logo/generer.py : ne pas modifier à la main.\n"
             f"    Fond : ic_launcher_background {PAPIER}.")
     with open(os.path.join(DRAWABLE, "ic_launcher_foreground.xml"), "w") as out:
@@ -207,4 +207,4 @@ if __name__ == "__main__":
         out.write(c.drawable(note + "\n    Calque monochrome des icônes à thème d'Android 13+.", monochrome=True))
     # Icône de l'app web (onglet du navigateur, écran d'accueil) : la zone visible de l'icône, coins arrondis.
     with open(os.path.join(HERE, "..", "..", "public", "icon.svg"), "w") as out:
-        out.write(c.svg("Rift Live : un cristal hextech", view="18 18 72 72", coins=15.75))
+        out.write(c.svg("LoL Live : un cristal hextech", view="18 18 72 72", coins=15.75))

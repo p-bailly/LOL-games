@@ -1,6 +1,6 @@
 {
-  "name": "Rift Live – Matchs LoL pro en direct",
-  "short_name": "Rift Live",
+  "name": "LoL Live – Matchs LoL pro en direct",
+  "short_name": "LoL Live",
   "description": "Matchs de League of Legends pro en direct : scores, drafts, tableaux des scores, classements, équipes et joueurs.",
   "start_url": "./",
   "scope": "./",

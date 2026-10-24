@@ -1,6 +1,6 @@
 {
   "appId": "com.pbailly.riftlive",
-  "appName": "Rift Live",
+  "appName": "LoL Live",
   "webDir": "dist",
   "android": {
     "backgroundColor": "#0b0e14"

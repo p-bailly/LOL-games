@@ -46,8 +46,8 @@ jobs:
           NOTES="APK construit automatiquement depuis ${GITHUB_SHA::7} (build n°${{ github.run_number }})."
           if gh release view apk >/dev/null 2>&1; then
             gh release upload apk rift-live.apk --clobber
-            gh release edit apk --title "Rift Live – APK Android" --notes "$NOTES"
+            gh release edit apk --title "LoL Live – APK Android" --notes "$NOTES"
           else
             gh release create apk rift-live.apk --target "$GITHUB_SHA" --latest \
-              --title "Rift Live – APK Android" --notes "$NOTES"
+              --title "LoL Live – APK Android" --notes "$NOTES"
           fi
