@@ -42,8 +42,7 @@ def chemin(*items):
 
 
 def etoile(c, x, y, r, w=2.0):
-    c.ligne((x - r, y), (x + r, y), "trait", width=w)
-    c.ligne((x, y - r), (x, y + r), "trait", width=w)
+    """Les éclats « + » autour des dessins ont été retirés (demande de l'utilisateur) : plus rien n'est tracé."""
 
 
 def epee(c, pied, pointe, lame="gris", poignee="brun", largeur=5.0):
@@ -68,7 +67,18 @@ def epee(c, pied, pointe, lame="gris", poignee="brun", largeur=5.0):
 # ---------- Les pistes ----------
 
 def p01_cristal(c):
-    g.dessin(c)
+    haut, droite, bas, gauche = (58, 28), (76, 49), (58, 80), (40, 49)
+    ombre(c, 58, 84, 15)
+    gemme = [haut, droite, bas, gauche]
+    c.remplir(gemme, "or")
+    c.hachures([haut, droite, (58, 49)], "or.h", spacing=3.4, angle=-40)
+    c.hachures([(58, 49), droite, bas], "or.h", spacing=3.4, angle=-40)
+    c.trait(gemme, "trait", close=True)
+    c.ligne(gauche, droite, "trait", width=2.0)
+    c.ligne(haut, (49, 49), "trait", width=2.0)
+    c.ligne(haut, (67, 49), "trait", width=2.0)
+    c.ligne((49, 49), bas, "trait", width=2.0)
+    c.ligne((67, 49), bas, "trait", width=2.0)
 
 
 def p02_epees(c):
@@ -262,6 +272,185 @@ def p10_bouclier(c):
     etoile(c, 84, 60, 3.4)
 
 
+
+# ---------- Pistes supplémentaires ----------
+
+def arrondi(x0, y0, x1, y1, r=4.0):
+    """Rectangle aux coins arrondis, en points."""
+    return (ellipse(x1 - r, y0 + r, r, r, 0, 270, 360, 6) + ellipse(x1 - r, y1 - r, r, r, 0, 0, 90, 6)
+            + ellipse(x0 + r, y1 - r, r, r, 0, 90, 180, 6) + ellipse(x0 + r, y0 + r, r, r, 0, 180, 270, 6))
+
+
+def miroir(pts, axe=54):
+    return [(2 * axe - x, y) for x, y in reversed(pts)]
+
+
+def lettre(c, ch, cx, cy):
+    t = lambda *a, **k: c.trait(*a, "trait", **{"width": 2.6, **k})
+    if ch == "Q":
+        t(ellipse(cx - 0.5, cy - 0.5, 5, 5.4, 0, 0, 360, 20), close=True)
+        t([(cx + 2, cy + 2.5), (cx + 6, cy + 6.5)])
+    elif ch == "W":
+        t([(cx - 6.5, cy - 5), (cx - 3, cy + 5), (cx, cy - 1), (cx + 3, cy + 5), (cx + 6.5, cy - 5)])
+    elif ch == "E":
+        t([(cx + 4, cy - 5), (cx - 4, cy - 5), (cx - 4, cy + 5), (cx + 4, cy + 5)])
+        t([(cx - 4, cy), (cx + 3, cy)])
+    elif ch == "R":
+        t([(cx - 4, cy + 5.5), (cx - 4, cy - 5), (cx + 2, cy - 5)] + chemin(("M", (cx + 2, cy - 5)), ("Q", (cx + 6.5, cy - 5), (cx + 6.5, cy - 2.2)), ("Q", (cx + 6.5, cy + 0.5), (cx + 2, cy + 0.5)))[1:] + [(cx - 4, cy + 0.5)])
+        t([(cx + 0.5, cy + 0.5), (cx + 5.5, cy + 5.5)])
+
+
+def p11_qwer(c):
+    ombre(c, 54, 85, 24)
+    for ch, col, (x, y) in (("Q", "bleu", (27, 28)), ("W", "sarcelle", (57, 28)), ("E", "or", (27, 58)), ("R", "rouge", (57, 58))):
+        touche = arrondi(x, y, x + 26, y + 26, 5)
+        c.remplir(touche, col)
+        c.hachures(arrondi(x + 13, y, x + 26, y + 26, 5), col + ".h", spacing=3.4, angle=-40)
+        c.trait(touche, "trait", close=True, width=2.8)
+        lettre(c, ch, x + 13, y + 13)
+
+
+def p12_baron(c):
+    ombre(c, 54, 84, 22)
+    pointes = [(30, 52), (34, 30), (43, 42), (48, 22), (54, 38), (60, 22), (65, 42), (74, 30), (78, 52)]
+    tete = pointes + chemin(("M", (78, 52)), ("Q", (80, 70), (66, 76)), ("L", (60, 70)), ("L", (54, 78)), ("L", (48, 70)), ("L", (42, 76)), ("Q", (28, 70), (30, 52)))[1:]
+    c.remplir(tete, "violet")
+    c.hachures(tete, "violet.h", spacing=3.4, angle=-40)
+    c.trait(tete, "trait", close=True, width=2.8)
+    oeil = chemin(("M", (35, 56)), ("Q", (54, 42), (73, 56)), ("Q", (54, 68), (35, 56)))
+    c.remplir(oeil, "page")
+    c.trait(oeil, "trait", close=True, width=2.4)
+    iris = ellipse(54, 56, 8, 8, 0, 0, 360, 24)
+    c.remplir(iris, "jaune")
+    c.hachures(iris, "jaune.h", spacing=2.6, angle=-40, width=1.1)
+    c.trait(iris, "trait", close=True, width=2.0)
+    c.remplir(ellipse(54, 56, 2.2, 7), "trait")
+
+
+def p13_dragon(c):
+    ombre(c, 54, 85, 20)
+    moitie = [(54, 36), (64, 35), (74, 44), (77, 56), (72, 68), (62, 76), (54, 80)]
+    tete = moitie + miroir(moitie)
+    for sgn in (-1, 1):  # cornes
+        corne = chemin(("M", (54 + sgn * 9, 38)), ("Q", (54 + sgn * 20, 36), (54 + sgn * 22, 18)), ("Q", (54 + sgn * 11, 26), (54 + sgn * 5, 35)))
+        c.remplir(corne, "brun")
+        c.trait(corne, "trait", close=True, width=2.4)
+        aile = [(54 + sgn * 22, 46), (54 + sgn * 33, 38), (54 + sgn * 30, 52), (54 + sgn * 33, 60), (54 + sgn * 22, 60)]
+        c.remplir(aile, "orange")
+        c.trait(aile, "trait", close=True, width=2.2)
+    c.remplir(tete, "vert")
+    c.hachures(moitie + [(54, 36)], "vert.h", spacing=3.2, angle=-40)
+    c.trait(tete, "trait", close=True, width=2.8)
+    for sgn in (-1, 1):
+        oeil = chemin(("M", (54 + sgn * 6, 54)), ("Q", (54 + sgn * 12, 47), (54 + sgn * 19, 52)), ("Q", (54 + sgn * 13, 59), (54 + sgn * 6, 54)))
+        c.remplir(oeil, "jaune")
+        c.trait(oeil, "trait", close=True, width=2.0)
+        c.remplir(ellipse(54 + sgn * 12.5, 53.2, 1.5, 3.6), "trait")
+        c.remplir(ellipse(54 + sgn * 5.5, 68, 1.9, 2.8), "trait")
+    c.trait([(46, 76), (48.5, 71), (51, 76)], "trait", width=1.8, passes=1)
+    c.trait([(57, 76), (59.5, 71), (62, 76)], "trait", width=1.8, passes=1)
+
+
+def p14_couronne(c):
+    ombre(c, 54, 84, 22)
+    couronne = [(30, 70), (28, 34), (42, 50), (54, 28), (66, 50), (80, 34), (78, 70)]
+    c.remplir(couronne, "or")
+    c.hachures([(54, 28), (66, 50), (80, 34), (78, 70), (54, 70)], "or.h", spacing=3.4, angle=-40)
+    c.trait(couronne, "trait", close=True, width=3.0)
+    bande = [(30, 62), (78, 62), (78, 74), (30, 74)]
+    c.remplir(bande, "or")
+    c.trait(bande, "trait", close=True, width=2.6)
+    for x, y, col in ((28, 34, "rouge"), (54, 28, "bleu"), (80, 34, "rouge")):
+        c.remplir(cercle(x, y, 4.4, 16), col)
+        c.trait(cercle(x, y, 4.4, 16), "trait", close=True, width=2.0)
+    gem = [(54, 63), (59, 68), (54, 73), (49, 68)]
+    c.remplir(gem, "sarcelle")
+    c.trait(gem, "trait", close=True, width=2.0)
+    for x in (38, 70):
+        c.remplir(cercle(x, 68, 2.2, 10), "bleu")
+        c.trait(cercle(x, 68, 2.2, 10), "trait", close=True, width=1.6, passes=1)
+
+
+def p15_orbe(c):
+    ombre(c, 54, 84, 18)
+    pied = [(40, 72), (68, 72), (72, 80), (36, 80)]
+    c.remplir(pied, "brun")
+    c.hachures(pied, "brun.h", spacing=3.2, angle=-40)
+    c.trait(pied, "trait", close=True, width=2.4)
+    c.trait([(44, 68), (64, 68), (66, 72), (42, 72)], "trait", close=True, width=2.2)
+    sphere = ellipse(54, 48, 24, 24, 0, 0, 360, 44)
+    c.remplir(sphere, "bleu")
+    c.hachures(chemin(("M", (54, 24)), ("Q", (82, 40), (68, 66)), ("Q", (60, 72), (54, 72)), ("L", (54, 24))), "bleu.h", spacing=3.4, angle=-40)
+    c.trait(sphere, "trait", close=True, width=3.0)
+    gem = [(54, 36), (61, 48), (54, 60), (47, 48)]
+    c.remplir(gem, "or")
+    c.hachures(gem, "or.h", spacing=3.0, angle=-40)
+    c.trait(gem, "trait", close=True, width=2.2)
+    c.trait(chemin(("M", (38, 40)), ("Q", (40, 32), (47, 30))), "page", width=3.2, passes=1)
+
+
+def p16_heaume(c):
+    ombre(c, 54, 84, 20)
+    plume = chemin(("M", (54, 30)), ("Q", (50, 12), (68, 14)), ("Q", (62, 18), (64, 30)))
+    c.remplir(plume, "rouge")
+    c.hachures(plume, "rouge.h", spacing=3.0, angle=-40)
+    c.trait(plume, "trait", close=True, width=2.4)
+    dome = chemin(("M", (32, 62)), ("L", (32, 46)), ("Q", (32, 26), (54, 26)), ("Q", (76, 26), (76, 46)), ("L", (76, 62)), ("L", (68, 76)), ("L", (40, 76)))
+    c.remplir(dome, "gris")
+    c.hachures(chemin(("M", (54, 26)), ("Q", (76, 26), (76, 46)), ("L", (76, 62)), ("L", (68, 76)), ("L", (54, 76))), "gris.h", spacing=3.4, angle=-40)
+    c.trait(dome, "trait", close=True, width=3.0)
+    c.ligne((54, 26), (54, 50), "trait", width=2.2)
+    fente = [(36, 50), (72, 50), (72, 58), (36, 58)]
+    c.remplir(fente, "trait")
+    c.trait(fente, "trait", close=True, width=2.0)
+    for x in (42, 66):  # aération de la mentonnière
+        c.ligne((x, 64), (x, 72), "trait", width=2.0, passes=1)
+    c.ligne((54, 62), (54, 74), "trait", width=2.0, passes=1)
+
+
+def p17_minion(c):
+    ombre(c, 54, 84, 18)
+    robe = chemin(("M", (38, 78)), ("Q", (38, 62), (46, 58)), ("L", (62, 58)), ("Q", (70, 62), (70, 78)))
+    c.remplir(robe, "bleu")
+    c.hachures(robe, "bleu.h", spacing=3.2, angle=-40)
+    c.trait(robe, "trait", close=True, width=2.6)
+    visage = ellipse(54, 52, 16, 14, 0, 0, 360, 32)
+    c.remplir(visage, "gris")
+    c.trait(visage, "trait", close=True, width=2.6)
+    for sgn in (-1, 1):
+        c.remplir(ellipse(54 + sgn * 6.5, 51, 4.2, 5), "page")
+        c.trait(ellipse(54 + sgn * 6.5, 51, 4.2, 5), "trait", close=True, width=1.8)
+        c.remplir(cercle(54 + sgn * 6.5, 52, 1.9, 10), "trait")
+    c.trait(chemin(("M", (48, 60)), ("Q", (54, 64), (60, 60))), "trait", width=2.0, passes=1)
+    chapeau = [(36, 44), (72, 44), (60, 40), (56, 14), (48, 40)]
+    c.remplir(chapeau, "violet")
+    c.hachures(chapeau, "violet.h", spacing=3.0, angle=-40)
+    c.trait(chapeau, "trait", close=True, width=2.6)
+    c.ligne((34, 44), (74, 44), "trait", width=3.2)
+    c.remplir([(54, 28), (56, 33), (61, 33), (57, 36), (59, 41), (54, 38), (49, 41), (51, 36), (47, 33), (52, 33)], "jaune")
+
+
+def p18_ecran(c):
+    ombre(c, 54, 85, 22)
+    ecran = arrondi(26, 24, 82, 64, 5)
+    c.remplir(ecran, "gris")
+    c.trait(ecran, "trait", close=True, width=3.0)
+    vitre = arrondi(31, 29, 77, 59, 3)
+    c.remplir(vitre, "bleu")
+    c.hachures(arrondi(54, 29, 77, 59, 3), "bleu.h", spacing=3.4, angle=-40)
+    c.trait(vitre, "trait", close=True, width=2.0)
+    gem = [(54, 33), (62, 44), (54, 56), (46, 44)]
+    c.remplir(gem, "or")
+    c.hachures(gem, "or.h", spacing=3.0, angle=-40)
+    c.trait(gem, "trait", close=True, width=2.2)
+    c.remplir(cercle(37, 35, 3.2, 14), "rouge")
+    c.trait(cercle(37, 35, 3.2, 14), "trait", close=True, width=1.6, passes=1)
+    c.trait([(50, 64), (58, 64), (60, 72), (48, 72)], "trait", close=True, width=2.4)
+    base = arrondi(38, 72, 70, 78, 2.5)
+    c.remplir(base, "gris")
+    c.trait(base, "trait", close=True, width=2.6)
+
+
 _PAIR = re.compile(r"(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)")
 
 
@@ -296,6 +485,14 @@ PISTES = [
     ("faille", "Faille de l'Invocateur", p08_faille),
     ("hexagone", "Hexagone hextech", p09_hexagone),
     ("bouclier", "Bouclier et épée", p10_bouclier),
+    ("qwer", "Touches QWER", p11_qwer),
+    ("baron", "Baron Nashor", p12_baron),
+    ("dragon", "Dragon", p13_dragon),
+    ("couronne", "Couronne", p14_couronne),
+    ("orbe", "Boule de cristal", p15_orbe),
+    ("heaume", "Heaume", p16_heaume),
+    ("minion", "Minion mage", p17_minion),
+    ("ecran", "Écran de match", p18_ecran),
 ]
 
 if __name__ == "__main__":
