@@ -1,0 +1,17 @@
+{
+  "appId": "com.pbailly.riftlive",
+  "appName": "Rift Live",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#0b0e14"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_notify",
+      "iconColor": "#C89B3C"
+    }
+  }
+}

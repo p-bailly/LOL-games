@@ -1,0 +1,134 @@
+# Rift Live 🔮
+
+Application perso pour suivre les **matchs de League of Legends pro** : scores, direct, drafts (picks et bans),
+tableaux des scores, classements, équipes et joueurs. Même esprit que *Basket Live* (l'appli NBA) : web app
+installable sur téléphone (PWA) et APK Android, sans compte ni serveur.
+
+Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions internationales (**Worlds, MSI, First Stand**).
+
+## Fonctionnalités
+
+- **Matchs** : bandeau des jours, filtre par ligue, séries en direct en tête, tes équipes favorites en premier.
+  Heures dans ton fuseau. Série en cours, score de la série (BO1 / BO3 / BO5), game décisive signalée.
+- **Fiche de série**, une game à la fois :
+  - **Draft** : bans et picks de chaque camp, rôle par rôle, avec l'**ordre de la draft** (1 à 20) ;
+  - **Joueurs** : tableau des scores (K/D/A, CS, or, dégâts, participation aux kills, vision, objets, runes
+    et sorts d'invocateur) ;
+  - **Équipes** : kills, or, tours, dragons, barons, hérauts, larves du Néant, inhibiteurs ;
+  - avant la série : forme sur 5 séries et face-à-face ; replay et lien de la retransmission.
+- **Direct** (avec une clé LoL Esports, voir plus bas) : score de la série en temps réel, et pour la game en cours
+  l'or, les kills, les objectifs, les 10 joueurs (niveau, KDA, CS, vie) et la courbe d'écart d'or.
+- **Classement** de chaque tournoi (séries et games gagnées, série en cours) ou, pour les playoffs, les séries tour
+  par tour.
+- **Stats** d'un tournoi : champions (présence, picks, bans, taux de victoire) et joueurs (KDA, kills, CS, dégâts).
+- **Équipes** : favoris, effectif et calendrier de chaque équipe. **Joueurs** : fiche, stats sur 12 mois,
+  champions les plus joués, dernières games.
+- **Alertes** : début de série, fin de chaque game, game décisive, résultat final.
+- Thème sombre / clair automatique, interface en français.
+
+## Les données
+
+| Source | Sert à | Clé |
+| --- | --- | --- |
+| [Leaguepedia](https://lol.fandom.com) (tables Cargo) | calendrier, résultats, drafts, stats des joueurs, classements, effectifs | aucune |
+| [Data Dragon](https://developer.riotgames.com/docs/lol#data-dragon) (Riot) | icônes des champions et des objets | aucune |
+| API de lolesports.com (non officielle) | direct exact : score, or, objectifs, joueurs de la game en cours | à coller dans l'appli |
+
+**Sans clé**, tout fonctionne avec Leaguepedia : les résultats, drafts et statistiques arrivent quelques minutes
+après la fin de chaque game ; une série dont l'heure est passée est affichée « En cours (estimé) ».
+
+**Avec la clé**, la série est confirmée en direct et la game en cours est détaillée. Pour la trouver :
+
+1. Ouvre lolesports.com sur un ordinateur, puis les outils de développement (F12), onglet *Réseau*.
+2. Recharge la page, clique sur une requête vers `esports-api.lolesports.com` (par ex. `getSchedule`).
+3. Copie la valeur de l'en-tête `x-api-key`.
+4. Dans l'appli : onglet **Équipes → Direct LoL Esports**, colle la clé, *Enregistrer* (le bouton *Tester la clé*
+   vérifie qu'elle est acceptée).
+
+La clé reste sur l'appareil et n'est envoyée qu'à LoL Esports. Elle peut changer : recommence alors la manipulation.
+L'API n'est pas documentée et peut évoluer sans préavis ; si elle ne répond plus, l'appli retombe sur Leaguepedia.
+
+Limites à connaître :
+
+- Leaguepedia limite les requêtes anonymes : l'appli espace ses appels, garde les réponses en cache et ralentit
+  son rafraîchissement quand rien n'est en direct. Dans le navigateur, un quota dépassé affiche
+  « Leaguepedia limite les requêtes » : il suffit de réessayer un peu plus tard.
+- Dans l'**appli Android**, les appels passent par le HTTP natif de Capacitor (`CapacitorHttp`) : pas de restriction
+  CORS, ce qui est aussi ce qui permet d'appeler l'API de lolesports.com. Dans le **navigateur**, ce sont les
+  règles CORS des serveurs qui décident : Leaguepedia répond, le direct LoL Esports peut être refusé.
+- Les statistiques détaillées d'une game (picks, items…) n'existent dans Leaguepedia qu'une fois la game terminée.
+- Les bans sont toujours ceux de Leaguepedia ; le flux en direct ne donne que les champions choisis.
+
+Projet perso, sans lien avec Riot Games, LoL Esports ni Leaguepedia. *League of Legends* est une marque de Riot Games.
+
+## Appli Android (APK)
+
+**Télécharger :** https://github.com/p-bailly/LOL-games/releases/latest/download/rift-live.apk
+
+1. Ouvre le lien sur le téléphone Android et télécharge le fichier.
+2. Ouvre-le : Android demande d'autoriser l'installation depuis le navigateur (« sources inconnues ») — accepte.
+3. L'appli **Rift Live** apparaît avec les autres applis.
+
+L'APK est reconstruit automatiquement par GitHub Actions (`.github/workflows/android.yml`) à chaque push sur la
+branche par défaut ; il suffit de le retélécharger pour mettre à jour (il s'installe par-dessus l'ancien).
+
+Il est signé avec la même clé de signature personnelle que *Basket Live*, volontairement versionnée
+(`android/app/superfan.keystore`), pour que les APK construits n'importe où aient la même signature. C'est adapté à
+un usage perso, pas à une publication sur le Play Store.
+
+Construire l'APK soi-même : Android SDK (plateforme 36) + Java 21, puis `npm run android`
+→ `android/app/build/outputs/apk/release/app-release.apk`.
+
+## Partage avec Nimbus
+
+L'appli Android partage la liste de tes **équipes favorites** avec le launcher perso Nimbus (`fr.perso.nimbus`).
+`src/lib/nimbus.ts` les remet au plugin natif `NimbusBridge`, qui les garde dans des SharedPreferences ;
+`NimbusProvider` les sert en lecture seule à l'adresse `content://com.pbailly.riftlive.nimbus/favorites` (une ligne
+par équipe, dans l'ordre des favoris : `team_id` = nom Leaguepedia de l'équipe, `abbr` et `name`). Seuls Nimbus et
+l'appli elle-même peuvent lire cette adresse.
+
+Nimbus doit lire cette nouvelle adresse pour afficher les équipes LoL (il lit aujourd'hui celle de Basket Live).
+
+## Lancer l'app en local
+
+Prérequis : [Node.js](https://nodejs.org) 20 ou plus.
+
+```bash
+npm install
+npm run dev          # http://localhost:5173
+npm run dev -- --host   # pour l'ouvrir depuis ton téléphone sur le même Wi-Fi
+```
+
+Version de production : `npm run build` puis `npm run preview`.
+
+## La mettre sur ton téléphone (PWA)
+
+1. **Héberge-la** (gratuit) : GitHub Pages (`.github/workflows/deploy.yml`, à activer dans *Settings → Pages →
+   Source : GitHub Actions*) ou Netlify / Vercel / Cloudflare Pages (commande `npm run build`, dossier `dist`).
+2. Ouvre l'adresse sur le téléphone, puis *Sur l'écran d'accueil* (iPhone, Safari) ou *Installer l'application*
+   (Android, Chrome).
+
+## Les alertes
+
+Active-les dans l'onglet **Équipes**. Elles s'affichent dans l'app et en notification système (appli Android :
+notifications natives ; navigateur : quand il le permet, sur iPhone seulement une fois l'app ajoutée à l'écran
+d'accueil, iOS 16.4+). Sans serveur, elles ne partent que **quand l'app est ouverte ou en arrière-plan récent**.
+
+## Structure
+
+```
+src/
+  api/cargo.ts         accès aux tables Cargo de Leaguepedia (file d'attente, cache, logos)
+  api/leaguepedia.ts   séries, games, drafts, équipes
+  api/stats.ts         tournois, classements, effectifs, stats de champions et de joueurs
+  api/lolesports.ts    API LoL Esports (direct), api/live.ts : rapprochement avec les séries de Leaguepedia
+  api/ddragon.ts       icônes de champions et d'objets (Data Dragon)
+  api/leagues.ts       ligues suivies
+  hooks/usePolling.ts  chargement + rafraîchissement automatique (pause en arrière-plan)
+  lib/                 formatage, favoris / réglages (localStorage), routage par hash, notifications, Nimbus
+  components/          cartes de série, draft, tableau des scores, direct, alertes…
+  pages/               Matchs, Série, Classement, Stats, Équipes, Équipe, Joueur
+public/                manifest PWA, service worker, icônes
+android/               projet Android (Capacitor) qui embarque l'app web
+design/logo/           logo au crayon : generer.py (SVG, icône adaptative), puis png.cjs (PNG)
+```
