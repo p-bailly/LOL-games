@@ -17,6 +17,7 @@ export interface CargoQuery {
   group_by?: string
   order_by?: string
   limit?: number
+  offset?: number
 }
 
 export type Row = Record<string, unknown>

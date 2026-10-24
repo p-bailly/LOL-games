@@ -3,6 +3,7 @@ import { fetchStandings, fetchTournamentRounds } from '../api/stats'
 import { leagueByKey } from '../api/leagues'
 import { buildSwiss } from '../api/swiss'
 import type { StandingRow } from '../api/types'
+import { Projection } from '../components/Projection'
 import { SwissBracket } from '../components/SwissBracket'
 import { SwissTable } from '../components/SwissTable'
 import { TournamentPicker, useTournamentPicker } from '../components/TournamentPicker'
@@ -12,7 +13,7 @@ import { shortDate, timeOf } from '../lib/format'
 import { href } from '../lib/router'
 import { useFavorites } from '../lib/store'
 
-type View = 'table' | 'swiss' | 'balances' | 'rounds'
+type View = 'table' | 'swiss' | 'balances' | 'projection' | 'rounds'
 
 export function StandingsPage({ active }: { active: boolean }) {
   const picker = useTournamentPicker(active)
@@ -34,6 +35,7 @@ export function StandingsPage({ active }: { active: boolean }) {
       <TournamentPicker picker={picker} />
       <div className="toolbar">
         <Segmented<View>
+          compact
           value={shown}
           onChange={setView}
           options={[
@@ -43,7 +45,8 @@ export function StandingsPage({ active }: { active: boolean }) {
                   { value: 'balances' as const, label: 'Bilans' },
                 ]
               : []),
-            { value: 'table' as const, label: 'Classement' },
+            { value: 'table' as const, label: 'Rang' },
+            { value: 'projection' as const, label: 'Chances' },
             { value: 'rounds' as const, label: 'Tours' },
           ]}
         />
@@ -62,6 +65,7 @@ export function StandingsPage({ active }: { active: boolean }) {
         )}
         {tournament && shown === 'swiss' && swiss && <SwissBracket swiss={swiss} />}
         {tournament && shown === 'balances' && swiss && <SwissTable swiss={swiss} />}
+        {tournament && shown === 'projection' && <Projection page={tournament.page} active={active} />}
         {tournament && shown === 'rounds' && (
           <>
             {rounds.error && !rounds.data && <ErrorBox error={rounds.error} onRetry={rounds.refresh} />}

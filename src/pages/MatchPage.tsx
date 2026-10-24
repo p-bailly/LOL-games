@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchMatchDetail } from '../api/leaguepedia'
 import { applyLive } from '../api/live'
+import { fetchRatings, gameProb, ratingOf } from '../api/ratings'
 import type { FormEntry, Game, Match, MatchDetail, Side } from '../api/types'
 import { Draft, Scoreboard, TeamCompare } from '../components/GameViews'
 import { LivePanel } from '../components/LivePanel'
@@ -98,6 +99,7 @@ function SeriesHeader({ match }: { match: Match }) {
         </div>
         <SideCol side={match.b} n={2} match={match} />
       </div>
+      {match.state !== 'post' && match.a.team.id !== 'TBD' && match.b.team.id !== 'TBD' && <WinChance match={match} />}
       {match.stream && match.state !== 'post' && (
         <a className="sb-stream" href={match.stream} target="_blank" rel="noreferrer">
           {live ? 'Regarder en direct' : 'Lien de la retransmission'}
@@ -197,4 +199,37 @@ function PreMatch({ detail }: { detail: MatchDetail }) {
       {!form.a.length && !form.b.length && <Empty>Aucun résultat récent pour ces équipes.</Empty>}
     </>
   )
+}
+
+/** Chances de gagner la série d'après la force des équipes (classement de type Elo), avant le début ou pendant la série. */
+function WinChance({ match }: { match: Match }) {
+  const { data } = usePolling(() => fetchRatings(), [], null)
+  if (!data) return null
+  const pg = gameProb(ratingOf(data, match.a.team.id), ratingOf(data, match.b.team.id))
+  // En cours : on repart du score de la série (games déjà gagnées), en repartant d'une série plus courte.
+  const need = Math.floor(match.bestOf / 2) + 1
+  const sa = match.state === 'in' ? match.a.score ?? 0 : 0
+  const sb = match.state === 'in' ? match.b.score ?? 0 : 0
+  const pa = remaining(pg, need - sa, need - sb)
+  const pct = Math.round(pa * 100)
+  return (
+    <div className="chance" aria-label={`Chances de gagner : ${match.a.team.code} ${pct} %, ${match.b.team.code} ${100 - pct} %`}>
+      <div className="chance-top">
+        <strong>{match.a.team.code} {pct} %</strong>
+        <span className="muted">chances de gagner</span>
+        <strong>{100 - pct} % {match.b.team.code}</strong>
+      </div>
+      <div className="sc-bar">
+        <span className="blue" style={{ flexGrow: pa || 0.001 }} />
+        <span className="red" style={{ flexGrow: 1 - pa || 0.001 }} />
+      </div>
+    </div>
+  )
+}
+
+/** Chance que A gagne encore `na` games avant que B n'en gagne `nb`, chaque game étant gagnée par A avec la chance p. */
+function remaining(p: number, na: number, nb: number): number {
+  if (na <= 0) return 1
+  if (nb <= 0) return 0
+  return p * remaining(p, na - 1, nb) + (1 - p) * remaining(p, na, nb - 1)
 }

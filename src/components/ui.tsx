@@ -74,13 +74,16 @@ export function Segmented<T extends string>({
   options,
   value,
   onChange,
+  compact,
 }: {
   options: { value: T; label: ReactNode }[]
   value: T
   onChange: (v: T) => void
+  /** Boutons plus serrés, pour cinq choix sur un téléphone. */
+  compact?: boolean
 }) {
   return (
-    <div className="segmented" role="tablist">
+    <div className={`segmented ${compact ? 'compact' : ''}`} role="tablist">
       {options.map((o) => (
         <button
           key={o.value}

@@ -24,6 +24,12 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
   (résultat et adversaire de chaque équipe à chaque tour ; qualifiées, en course, éliminées).
 - Quand une compétition internationale est en cours (Worlds, MSI, First Stand), elle passe **en premier** : dans
   les filtres de ligues, dans Classement et Stats (choisie d'office) et dans la liste des matchs du jour.
+- **Chances** (onglet Classement) : simulation de 4 000 tournois d'après la force des équipes. Pour un classement de
+  ligue : la probabilité de finir à chaque place. Pour les Worlds : celle de se qualifier (quarts), d'atteindre les
+  demies, la finale et de **gagner le titre**. La fiche d'une série affiche aussi les chances de gagner la série.
+  Force des équipes : classement de type Elo sur leurs 18 derniers mois, avec un niveau de départ par région
+  (estimation, pas un pronostic officiel ; les égalités sont tirées au sort et les quarts, quand ils ne sont pas
+  connus, tirés meilleur bilan contre moins bon).
 - **Stats** d'un tournoi : champions (présence, picks, bans, taux de victoire) et joueurs (KDA, kills, CS, dégâts).
 - **Équipes** : favoris, effectif et calendrier de chaque équipe. **Joueurs** : fiche, stats sur 12 mois,
   champions les plus joués, dernières games.
