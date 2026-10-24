@@ -48,7 +48,7 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
   toutes les compétitions officielles prises en compte par l'Elo.
 - **Stats** d'un tournoi : champions (présence, picks, bans, taux de victoire) et joueurs (KDA, kills, CS, dégâts).
 - **Équipes** : favoris, effectif et calendrier de chaque équipe. **Joueurs** : fiche, stats sur 12 mois,
-  champions les plus joués, dernières games.
+  champions les plus joués (12 derniers mois ou toute la carrière, liste complète), dernières games.
 - **Alertes** : début de série, fin de chaque game, game décisive, résultat final.
 - Thème sombre / clair automatique, interface en français.
 

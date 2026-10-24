@@ -227,6 +227,43 @@ export async function fetchPlayerGames(link: string, signal?: AbortSignal): Prom
   })
 }
 
+export interface ChampionLine {
+  champion: string
+  g: number
+  w: number
+  k: number
+  d: number
+  a: number
+}
+
+/** Tous les champions joués par un joueur en carrière (toutes les games de Leaguepedia), du plus joué au moins joué. */
+export async function fetchPlayerChampions(link: string, signal?: AbortSignal): Promise<ChampionLine[]> {
+  const rows = await cargoCached(
+    {
+      tables: 'ScoreboardPlayers',
+      fields: 'Champion,PlayerWin,COUNT(*)=G,SUM(Kills)=K,SUM(Deaths)=D,SUM(Assists)=A',
+      where: `Link=${q(link)} AND Champion IS NOT NULL AND Champion != ''`,
+      group_by: 'Champion,PlayerWin',
+      limit: 1000,
+    },
+    30 * 60_000,
+    signal,
+  )
+  const by = new Map<string, ChampionLine>()
+  for (const r of rows) {
+    const champion = str(r.Champion)
+    const c = by.get(champion) ?? { champion, g: 0, w: 0, k: 0, d: 0, a: 0 }
+    const g = num(r.G) ?? 0
+    c.g += g
+    if (str(r.PlayerWin) === 'Yes') c.w += g
+    c.k += num(r.K) ?? 0
+    c.d += num(r.D) ?? 0
+    c.a += num(r.A) ?? 0
+    by.set(champion, c)
+  }
+  return [...by.values()].sort((a, b) => b.g - a.g || a.champion.localeCompare(b.champion))
+}
+
 // ---------- Stats agrégées d'un tournoi ----------
 
 const pagesIn = (pages: string[]) => `OverviewPage IN (${qList(pages)})`

@@ -1,9 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { fetchPlayerElo, ROLE_NAMES } from '../api/eloPlayers'
-import { fetchPlayerGames, fetchPlayerInfo, type PlayerGame } from '../api/stats'
+import { fetchPlayerChampions, fetchPlayerGames, fetchPlayerInfo, type ChampionLine, type PlayerGame } from '../api/stats'
 import { ROLE_FR } from '../api/leagues'
 import { resolveTeams, teamOf } from '../api/leaguepedia'
-import { ChampIcon, Empty, EloDelta, ErrorBox, Loading, PageHeader } from '../components/ui'
+import { ChampIcon, Empty, EloDelta, ErrorBox, Loading, PageHeader, Segmented } from '../components/ui'
 import { usePlayerElo } from '../hooks/usePlayerElo'
 import { EloChart } from '../components/EloChart'
 import { usePolling } from '../hooks/usePolling'
@@ -66,7 +66,8 @@ export function PlayerPage({ id }: { id: string }) {
             <EloChart points={eloAll.history.get(id)!} />
           </div>
         )}
-        {games.data && games.data.length > 0 && <Stats games={games.data} />}
+        {games.data && games.data.length > 0 && <Stats games={games.data} link={id} />}
+        {games.data && games.data.length === 0 && <ChampionPool link={id} games={[]} />}
         {info.data && (info.data.twitter || info.data.stream) && (
           <p className="footnote">
             {info.data.twitter && (
@@ -86,7 +87,7 @@ export function PlayerPage({ id }: { id: string }) {
   )
 }
 
-function Stats({ games }: { games: PlayerGame[] }) {
+function Stats({ games, link }: { games: PlayerGame[]; link: string }) {
   const recent = usePlayerElo()?.recent
   const sum = useMemo(() => {
     const t = { g: games.length, k: 0, d: 0, a: 0, cs: 0, dmg: 0, w: 0 }
@@ -99,20 +100,6 @@ function Stats({ games }: { games: PlayerGame[] }) {
       if (x.win) t.w++
     }
     return t
-  }, [games])
-
-  const pool = useMemo(() => {
-    const m = new Map<string, { champion: string; g: number; w: number; k: number; d: number; a: number }>()
-    for (const x of games) {
-      const c = m.get(x.champion) ?? { champion: x.champion, g: 0, w: 0, k: 0, d: 0, a: 0 }
-      c.g++
-      if (x.win) c.w++
-      c.k += x.kills
-      c.d += x.deaths
-      c.a += x.assists
-      m.set(x.champion, c)
-    }
-    return [...m.values()].sort((a, b) => b.g - a.g).slice(0, 8)
   }, [games])
 
   return (
@@ -145,21 +132,7 @@ function Stats({ games }: { games: PlayerGame[] }) {
         </div>
       </section>
 
-      <section className="card flush">
-        <h3 className="card-title">Champions les plus joués</h3>
-        <ul className="pool">
-          {pool.map((c) => (
-            <li key={c.champion}>
-              <ChampIcon champion={c.champion} size={36} />
-              <span className="pool-main">
-                <strong>{c.champion}</strong>
-                <span className="muted">{c.g} game{c.g > 1 ? 's' : ''} · {pct(c.w, c.g)} de victoires</span>
-              </span>
-              <span className="pool-kda">{kda(c.k, c.d, c.a)} KDA</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <ChampionPool link={link} games={games} />
 
       <section className="card flush">
         <h3 className="card-title">Dernières games</h3>
@@ -186,5 +159,74 @@ function Stats({ games }: { games: PlayerGame[] }) {
         </ul>
       </section>
     </>
+  )
+}
+
+const LINES = 8
+
+/** Champions joués : sur les 12 derniers mois, ou sur toute la carrière (toutes les games connues de Leaguepedia). */
+function ChampionPool({ link, games }: { link: string; games: PlayerGame[] }) {
+  const [range, setRange] = useState<'year' | 'career'>(games.length ? 'year' : 'career')
+  const [all, setAll] = useState(false)
+  const career = usePolling((s) => fetchPlayerChampions(link, s), [link], null, range === 'career')
+  const year = useMemo(() => {
+    const m = new Map<string, ChampionLine>()
+    for (const x of games) {
+      const c = m.get(x.champion) ?? { champion: x.champion, g: 0, w: 0, k: 0, d: 0, a: 0 }
+      c.g++
+      if (x.win) c.w++
+      c.k += x.kills
+      c.d += x.deaths
+      c.a += x.assists
+      m.set(x.champion, c)
+    }
+    return [...m.values()].sort((a, b) => b.g - a.g)
+  }, [games])
+  const lines = range === 'year' ? year : career.data ?? []
+  const shown = all ? lines : lines.slice(0, LINES)
+  const total = lines.reduce((n, c) => n + c.g, 0)
+
+  return (
+    <section className="card flush">
+      <h3 className="card-title">Champions les plus joués</h3>
+      <div className="pool-range">
+        <Segmented<'year' | 'career'>
+          compact
+          value={range}
+          onChange={(r) => {
+            setRange(r)
+            setAll(false)
+          }}
+          options={[
+            { value: 'year', label: '12 mois' },
+            { value: 'career', label: 'Carrière' },
+          ]}
+        />
+      </div>
+      {range === 'career' && !career.data && !career.error && <Loading />}
+      {range === 'career' && career.error && !career.data && <ErrorBox error={career.error} onRetry={career.refresh} />}
+      {lines.length > 0 && (
+        <p className="muted small pool-count">
+          {lines.length} champion{lines.length > 1 ? 's' : ''} · {total} game{total > 1 ? 's' : ''}
+        </p>
+      )}
+      <ul className="pool">
+        {shown.map((c) => (
+          <li key={c.champion}>
+            <ChampIcon champion={c.champion} size={36} />
+            <span className="pool-main">
+              <strong>{c.champion}</strong>
+              <span className="muted">{c.g} game{c.g > 1 ? 's' : ''} · {pct(c.w, c.g)} de victoires</span>
+            </span>
+            <span className="pool-kda">{kda(c.k, c.d, c.a)} KDA</span>
+          </li>
+        ))}
+      </ul>
+      {lines.length > LINES && (
+        <button className="btn more" onClick={() => setAll(!all)}>
+          {all ? 'Réduire' : `Tout afficher (${lines.length})`}
+        </button>
+      )}
+    </section>
   )
 }

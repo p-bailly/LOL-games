@@ -2733,3 +2733,15 @@ a.player-link:hover strong {
   color: var(--muted);
   opacity: 0.7;
 }
+
+/* Champions joués : 12 mois ou carrière */
+.pool-range {
+  padding: 0 16px 8px;
+}
+.pool-count {
+  padding: 0 16px 6px;
+}
+.card.flush > .btn.more {
+  margin: 10px auto 14px;
+  display: block;
+}
