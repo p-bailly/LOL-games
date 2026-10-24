@@ -45,7 +45,7 @@ export interface PlayerParams {
   gap: number
 }
 
-export const PLAYER_DEFAULTS: PlayerParams = { kMax: 48, kMin: 10, nHalf: 40, intl: 1, playoffs: 1, regress: 0.3, gap: 150 }
+export const PLAYER_DEFAULTS: PlayerParams = { kMax: 96, kMin: 14, nHalf: 20, intl: 1, playoffs: 1, regress: 0.5, gap: 90 }
 
 export const BASE = 1500
 const DAY = 86_400_000
