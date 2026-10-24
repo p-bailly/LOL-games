@@ -2249,3 +2249,65 @@ a.player-link:hover strong {
 .sched-row {
   grid-template-columns: 78px 1fr auto;
 }
+
+/* ---------- Phase suisse ---------- */
+.swiss {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.swiss-group.qualified {
+  border-color: color-mix(in srgb, var(--pos) 45%, transparent);
+}
+.swiss-group.eliminated {
+  opacity: 0.8;
+}
+.swiss-group.eliminated .st-team {
+  font-weight: 500;
+}
+.swiss-table th,
+.swiss-table td {
+  padding: 7px 5px;
+}
+.swiss-table .sw-cell {
+  padding: 4px 3px;
+}
+.sw {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 40px;
+  padding: 3px 4px;
+  border-radius: 8px;
+  line-height: 1.1;
+}
+.sw strong {
+  font-size: 13px;
+}
+.sw small {
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.sw.w {
+  background: color-mix(in srgb, var(--pos) 18%, transparent);
+  color: var(--pos);
+}
+.sw.l {
+  background: color-mix(in srgb, var(--neg) 16%, transparent);
+  color: var(--neg);
+}
+.sw.next {
+  border: 1px dashed var(--axis);
+  color: var(--text-2);
+}
+.sw-record th {
+  padding: 5px 10px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--surface-2);
+}

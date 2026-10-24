@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { fetchStandings, fetchTournamentRounds } from '../api/stats'
 import { leagueByKey } from '../api/leagues'
+import { buildSwiss } from '../api/swiss'
 import type { StandingRow } from '../api/types'
+import { SwissTable } from '../components/SwissTable'
 import { TournamentPicker, useTournamentPicker } from '../components/TournamentPicker'
 import { Empty, ErrorBox, Loading, PageHeader, Segmented, TeamLogo } from '../components/ui'
 import { usePolling } from '../hooks/usePolling'
@@ -9,7 +11,7 @@ import { shortDate, timeOf } from '../lib/format'
 import { href } from '../lib/router'
 import { useFavorites } from '../lib/store'
 
-type View = 'table' | 'rounds'
+type View = 'table' | 'swiss' | 'rounds'
 
 export function StandingsPage({ active }: { active: boolean }) {
   const picker = useTournamentPicker(active)
@@ -20,8 +22,9 @@ export function StandingsPage({ active }: { active: boolean }) {
   const rounds = usePolling((s) => (tournament ? fetchTournamentRounds(tournament.page, s) : Promise.resolve([])), [tournament?.page], 5 * 60_000, active && !!tournament)
 
   const rows = standings.data ?? []
-  // Sans classement (playoffs, phases à élimination), on montre les séries tour par tour.
-  const shown: View = view ?? (standings.data && rows.length === 0 ? 'rounds' : 'table')
+  const swiss = useMemo(() => (rounds.data ? buildSwiss(rounds.data, rows) : undefined), [rounds.data, standings.data])
+  // Phase suisse d'abord ; sans classement (playoffs, élimination directe), les séries tour par tour.
+  const shown: View = (view === 'swiss' && !swiss ? undefined : view) ?? (swiss ? 'swiss' : standings.data && rows.length === 0 && rounds.data ? 'rounds' : 'table')
   const league = leagueByKey(picker.league)
 
   return (
@@ -33,8 +36,9 @@ export function StandingsPage({ active }: { active: boolean }) {
           value={shown}
           onChange={setView}
           options={[
-            { value: 'table', label: 'Classement' },
-            { value: 'rounds', label: 'Séries par tour' },
+            ...(swiss ? [{ value: 'swiss' as const, label: 'Suisse' }] : []),
+            { value: 'table' as const, label: 'Classement' },
+            { value: 'rounds' as const, label: 'Séries par tour' },
           ]}
         />
       </div>
@@ -50,6 +54,7 @@ export function StandingsPage({ active }: { active: boolean }) {
             {rows.length > 0 && <Table rows={rows} />}
           </>
         )}
+        {tournament && shown === 'swiss' && swiss && <SwissTable swiss={swiss} />}
         {tournament && shown === 'rounds' && (
           <>
             {rounds.error && !rounds.data && <ErrorBox error={rounds.error} onRetry={rounds.refresh} />}

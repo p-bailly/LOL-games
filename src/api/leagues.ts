@@ -56,3 +56,13 @@ export const roleOrder = (r?: string) => {
   const i = ROLES.indexOf((r ?? '') as (typeof ROLES)[number])
   return i < 0 ? 9 : i
 }
+
+/**
+ * Ligues dans l'ordre d'affichage : la compétition internationale d'abord quand une est en cours
+ * (`running` : clés des ligues qui ont un tournoi en cours).
+ */
+export function orderLeagues(running: Set<string> | string[] | undefined): LeagueDef[] {
+  const intl = LEAGUES.find((l) => l.key === 'intl')!
+  const on = running && (Array.isArray(running) ? running.includes('intl') : running.has('intl'))
+  return on ? [intl, ...LEAGUES.filter((l) => l !== intl)] : LEAGUES
+}

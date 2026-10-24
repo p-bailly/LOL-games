@@ -4,6 +4,7 @@ import { fetchLive, MissingKeyError } from '../api/lolesports'
 import { fetchLeagueTeams } from '../api/stats'
 import type { Team } from '../api/types'
 import { ErrorBox, Loading, PageHeader, Star, TeamLogo } from '../components/ui'
+import { useLeagueOrder } from '../hooks/useLeagueOrder'
 import { usePolling } from '../hooks/usePolling'
 import { isNative, notificationPermission, requestNotificationPermission, type Permission } from '../lib/notifications'
 import { href } from '../lib/router'
@@ -26,6 +27,8 @@ export function TeamsPage({ active }: { active: boolean }) {
   const favs = useFavorites()
   const [query, setQuery] = useState('')
   const mine = useFavoriteTeams(favs.ids)
+  const { leagues } = useLeagueOrder(active)
+  const sorted = groups && [...groups].sort((a, b) => leagues.findIndex((l) => l.key === a.league.key) - leagues.findIndex((l) => l.key === b.league.key))
 
   const q = query.trim().toLowerCase()
   const match = (t: Team) => !q || `${t.name} ${t.code}`.toLowerCase().includes(q)
@@ -64,7 +67,7 @@ export function TeamsPage({ active }: { active: boolean }) {
           <input className="search" type="search" placeholder="Rechercher une équipe…" value={query} onChange={(e) => setQuery(e.target.value)} />
           {error && !groups && <ErrorBox error={error} onRetry={refresh} />}
           {!groups && !error && <Loading />}
-          {groups?.map((g) => {
+          {sorted?.map((g) => {
             const list = g.teams.filter(match)
             if (!list.length) return null
             return (

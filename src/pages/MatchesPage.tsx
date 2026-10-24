@@ -1,11 +1,11 @@
 import { useMemo, useState, useSyncExternalStore } from 'react'
 import { fetchCalendar, fetchMatches } from '../api/leaguepedia'
-import { LEAGUES } from '../api/leagues'
 import { applyLive } from '../api/live'
 import type { Match } from '../api/types'
 import { DateStrip } from '../components/DateStrip'
 import { MatchCard } from '../components/MatchCard'
 import { Chips, Empty, ErrorBox, Loading, PageHeader, Segmented, UpdatedAt } from '../components/ui'
+import { useLeagueOrder } from '../hooks/useLeagueOrder'
 import { liveInterval, usePolling } from '../hooks/usePolling'
 import { dayToDate, longDay, toDay, today } from '../lib/format'
 import { createStore, useFavorites } from '../lib/store'
@@ -27,6 +27,7 @@ export function MatchesPage({ active }: { active: boolean }) {
   const [filter, setFilter] = useState<Filter>('all')
   const { league } = useSyncExternalStore(ui.subscribe, ui.get)
   const { ids: favs } = useFavorites()
+  const order = useLeagueOrder(active)
   const leagues = league === 'all' ? undefined : [league]
 
   // Jours avec des séries, de -45 à +60 jours.
@@ -62,7 +63,9 @@ export function MatchesPage({ active }: { active: boolean }) {
   const shown = matches.filter((m) => (filter === 'live' ? m.state === 'in' : filter === 'fav' ? isFav(m) : true))
   const favMatches = filter === 'all' ? shown.filter(isFav) : []
   const rest = shown.filter((m) => !favMatches.includes(m))
-  const byTime = (a: Match, b: Match) => a.date.localeCompare(b.date)
+  // L'international d'abord quand il est en cours, puis par heure.
+  const rank = (m: Match) => (order.intlOn && m.league === 'intl' ? 0 : 1)
+  const byTime = (a: Match, b: Match) => rank(a) - rank(b) || a.date.localeCompare(b.date)
   const sections: [string, Match[]][] = useMemo(
     () => [
       ['Mes équipes', favMatches.sort(byTime)],
@@ -71,7 +74,7 @@ export function MatchesPage({ active }: { active: boolean }) {
       ['Terminés', rest.filter((m) => m.state === 'post').sort(byTime)],
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, filter, favs],
+    [data, filter, favs, order.intlOn],
   )
   const estimated = matches.some((m) => m.state === 'in' && m.estimated)
 
@@ -92,7 +95,7 @@ export function MatchesPage({ active }: { active: boolean }) {
       <Chips
         value={league}
         onChange={(l) => ui.set({ league: l })}
-        options={[{ value: 'all', label: 'Toutes' }, ...LEAGUES.map((l) => ({ value: l.key, label: l.label }))]}
+        options={[{ value: 'all', label: 'Toutes' }, ...order.leagues.map((l) => ({ value: l.key, label: l.label }))]}
       />
 
       <div className="toolbar">

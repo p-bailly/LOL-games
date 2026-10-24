@@ -1,7 +1,9 @@
-import { allLeagueNames, leagueOfName, LEAGUES, type LeagueDef } from './leagues'
+import { allLeagueNames, leagueOfName, LEAGUES, orderLeagues, type LeagueDef } from './leagues'
 import { cargo, cargoCached, list, num, persisted, q, qList, str, type Row } from './cargo'
 import { resolveTeams, teamOf } from './leaguepedia'
 import type { ChampionStat, PlayerStat, RosterPlayer, StandingRow, Team, Tournament } from './types'
+
+export { orderLeagues }
 
 // Tournois, classements, effectifs et statistiques agrégées (Leaguepedia).
 
@@ -284,8 +286,24 @@ export async function fetchPlayerStats(pages: string[], signal?: AbortSignal): P
   }))
 }
 
+export interface RoundMatch {
+  id: string
+  date: string
+  a: Team
+  b: Team
+  scoreA?: number
+  scoreB?: number
+  winner?: number
+  bestOf: number
+}
+
+export interface Round {
+  name: string
+  matches: RoundMatch[]
+}
+
 /** Séries d'un tournoi, par tour (arbre des playoffs, phases de groupes). */
-export async function fetchTournamentRounds(page: string, signal?: AbortSignal) {
+export async function fetchTournamentRounds(page: string, signal?: AbortSignal): Promise<Round[]> {
   const rows = await cargoCached(
     {
       tables: 'MatchSchedule',
