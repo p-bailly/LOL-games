@@ -2,73 +2,53 @@ import { useMemo, useState } from 'react'
 import { fetchChampionStats, fetchPlayerStats } from '../api/stats'
 import { ROLES, ROLE_FR } from '../api/leagues'
 import { teamOf } from '../api/leaguepedia'
+import { AdvancedPlayers } from '../components/AdvancedPlayers'
+import { Records } from '../components/Records'
+import { RegionStats } from '../components/RegionStats'
+import { SortTh, useSort } from '../components/SortTh'
+import { TeamStats } from '../components/TeamStats'
 import { TournamentPicker, useTournamentPicker } from '../components/TournamentPicker'
 import { ChampIcon, Chips, Empty, ErrorBox, Loading, PageHeader, Segmented } from '../components/ui'
 import { usePolling } from '../hooks/usePolling'
 import { fixed, kdaNum, kilo, pct } from '../lib/format'
 import { href } from '../lib/router'
 
-type View = 'champions' | 'players'
-type Dir = 'best' | 'worst'
-
-/** Tri d'un tableau : on touche une colonne pour trier du meilleur au plus faible, une 2e fois pour inverser. */
-function useSort<K extends string>(initial: K) {
-  const [sort, set] = useState<{ key: K; dir: Dir }>({ key: initial, dir: 'best' })
-  const toggle = (key: K) => set((s) => (s.key === key ? { key, dir: s.dir === 'best' ? 'worst' : 'best' } : { key, dir: 'best' }))
-  return [sort, toggle] as const
-}
-
-function SortTh<K extends string>({
-  k,
-  label,
-  sort,
-  onSort,
-  left,
-}: {
-  k: K
-  label: string
-  sort: { key: K; dir: Dir }
-  onSort: (k: K) => void
-  left?: boolean
-}) {
-  const on = sort.key === k
-  return (
-    <th scope="col" className={left ? 'left' : ''} aria-sort={on ? (sort.dir === 'best' ? 'descending' : 'ascending') : 'none'}>
-      <button className={`sort-btn ${on ? 'on' : ''}`} onClick={() => onSort(k)} title={on && sort.dir === 'best' ? 'Du meilleur au plus faible (toucher pour inverser)' : on ? 'Du plus faible au meilleur (toucher pour inverser)' : 'Trier du meilleur au plus faible'}>
-        {label}
-        <span className="sort-arrow" aria-hidden="true">
-          {on ? (sort.dir === 'best' ? '▼' : '▲') : ''}
-        </span>
-      </button>
-    </th>
-  )
-}
+type View = 'champions' | 'players' | 'teams' | 'records' | 'regions'
 
 export function StatsPage({ active }: { active: boolean }) {
   const picker = useTournamentPicker(active)
   const [view, setView] = useState<View>('champions')
   const page = picker.tournament?.page
+  // Les régions se comparent sur les compétitions internationales : pas de choix de tournoi.
+  const byTournament = view !== 'regions'
 
   return (
     <>
-      <PageHeader title="Stats" subtitle={picker.tournament?.name ?? ' '} />
-      <TournamentPicker picker={picker} />
+      <PageHeader title="Stats" subtitle={byTournament ? (picker.tournament?.name ?? ' ') : 'Compétitions internationales'} />
       <div className="toolbar">
         <Segmented<View>
+          compact
           value={view}
           onChange={setView}
           options={[
             { value: 'champions', label: 'Champions' },
             { value: 'players', label: 'Joueurs' },
+            { value: 'teams', label: 'Équipes' },
+            { value: 'records', label: 'Records' },
+            { value: 'regions', label: 'Régions' },
           ]}
         />
       </div>
+      {byTournament && <TournamentPicker picker={picker} />}
       <div className="content">
-        {picker.error && !picker.loaded && <ErrorBox error={picker.error} onRetry={picker.refresh} />}
-        {!picker.loaded && !picker.error && <Loading />}
-        {picker.loaded && !page && <Empty>Aucun tournoi récent pour cette ligue.</Empty>}
+        {byTournament && picker.error && !picker.loaded && <ErrorBox error={picker.error} onRetry={picker.refresh} />}
+        {byTournament && !picker.loaded && !picker.error && <Loading />}
+        {byTournament && picker.loaded && !page && <Empty>Aucun tournoi récent pour cette ligue.</Empty>}
         {page && view === 'champions' && <Champions page={page} active={active} />}
         {page && view === 'players' && <Players page={page} active={active} />}
+        {page && view === 'teams' && <TeamStats page={page} active={active} />}
+        {page && view === 'records' && <Records page={page} active={active} />}
+        {view === 'regions' && <RegionStats active={active} />}
       </div>
     </>
   )
@@ -142,9 +122,34 @@ function Champions({ page, active }: { page: string; active: boolean }) {
 
 type PlayerKey = 'games' | 'kda' | 'kills' | 'deaths' | 'assists' | 'cs' | 'damage' | 'winrate'
 
+type PlayerMode = 'basic' | 'advanced'
+
 function Players({ page, active }: { page: string; active: boolean }) {
-  const [sort, onSort] = useSort<PlayerKey>('kda')
+  const [mode, setMode] = useState<PlayerMode>('basic')
   const [role, setRole] = useState('all')
+  return (
+    <>
+      <Segmented<PlayerMode>
+        compact
+        value={mode}
+        onChange={setMode}
+        options={[
+          { value: 'basic', label: 'Par partie' },
+          { value: 'advanced', label: 'Par minute' },
+        ]}
+      />
+      <Chips
+        value={role}
+        onChange={setRole}
+        options={[{ value: 'all', label: 'Tous les rôles' }, ...ROLES.map((r) => ({ value: r as string, label: ROLE_FR[r] }))]}
+      />
+      {mode === 'basic' ? <BasicPlayers page={page} role={role} active={active} /> : <AdvancedPlayers page={page} role={role} active={active} />}
+    </>
+  )
+}
+
+function BasicPlayers({ page, role, active }: { page: string; role: string; active: boolean }) {
+  const [sort, onSort] = useSort<PlayerKey>('kda')
   const { data, error, refresh } = usePolling((s) => fetchPlayerStats([page], s), [page], 10 * 60_000, active)
 
   const rows = useMemo(() => {
@@ -185,11 +190,6 @@ function Players({ page, active }: { page: string; active: boolean }) {
 
   return (
     <>
-      <Chips
-        value={role}
-        onChange={setRole}
-        options={[{ value: 'all', label: 'Tous les rôles' }, ...ROLES.map((r) => ({ value: r as string, label: ROLE_FR[r] }))]}
-      />
       <div className="card flush">
         <div className="table-scroll">
           <table className="standings stats-table">

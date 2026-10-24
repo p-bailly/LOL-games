@@ -1,4 +1,5 @@
 import { applySeries, DEFAULTS, type EloState, type Params, type SeriesIn } from '../lib/eloCore'
+import { regionHistory, CHART_REGIONS, type TeamRegion } from '../lib/regions'
 import { cached, cargo, isoDate, num, q, sqlDate, str } from './cargo'
 
 // Classement Elo mondial. Le calcul sur tout l'historique (depuis 2011, plus de 55 000 séries) est fait une fois
@@ -58,6 +59,10 @@ export interface Elo {
   history: Map<string, [number, number][]>
   /** Séries ajoutées par l'appli depuis le calcul. */
   added: number
+  /** Région de chaque équipe, y compris celles qui ne jouent plus, noms d'origine et noms actuels confondus. */
+  regions: Record<string, string>
+  /** Niveau moyen des meilleures équipes de chaque région, mois par mois (voir `regionHistory`). */
+  regionElo: Record<string, [number, number][]>
 }
 
 const DAY = 86_400_000
@@ -176,7 +181,22 @@ async function build(): Promise<Elo> {
   for (const [from, to] of Object.entries(snap.alias)) if (ratings[to] !== undefined && ratings[from] === undefined) ratings[from] = ratings[to]
   const history = new Map<string, [number, number][]>()
   for (const t of teams) history.set(t.id, withNow(snap.history[t.id] ?? [], monthOf(now), t.rating))
-  return { teams, byId, ratings, builtAt: snap.builtAt, until: snap.until, quality: snap.quality, params: snap.params, recent, history, added: added.length }
+
+  const regions: Record<string, string> = {}
+  const teamRegion: Record<string, TeamRegion> = {}
+  const monthlyAll: Record<string, [number, number][]> = {}
+  for (const [id, s] of Object.entries(state)) {
+    const lg = leagues[s.lg]
+    if (!lg) continue
+    regions[id] = lg[0]
+    teamRegion[id] = { region: lg[0], major: lg[1] === 'P' }
+    const h = snap.history[id] ?? []
+    monthlyAll[id] = now / DAY - s.last <= 180 ? withNow(h, monthOf(now), s.r) : h
+  }
+  for (const [from, to] of Object.entries(snap.alias)) if (regions[to] !== undefined && regions[from] === undefined) regions[from] = regions[to]
+  const regionElo = regionHistory(monthlyAll, teamRegion, CHART_REGIONS)
+
+  return { teams, byId, ratings, builtAt: snap.builtAt, until: snap.until, quality: snap.quality, params: snap.params, recent, history, added: added.length, regions, regionElo }
 }
 
 /** Classement Elo mondial à jour (gardé 30 minutes en mémoire). */

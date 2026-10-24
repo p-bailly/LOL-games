@@ -26,6 +26,13 @@
   --heat: #3987e5;
   --grid: #262c38;
   --axis: #3a4252;
+  /* Courbes des régions : une couleur par région, validées daltonisme sur ce fond. */
+  --rc-1: #3987e5;
+  --rc-2: #d95926;
+  --rc-3: #199e70;
+  --rc-4: #c98500;
+  --rc-5: #d55181;
+  --rc-6: #008300;
   /* Marges système : env() côté navigateur, variables injectées par l'appli Android (Capacitor). */
   --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
   --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
@@ -59,6 +66,12 @@
     --heat: #2a78d6;
     --grid: #e6e8ec;
     --axis: #c9cdd5;
+    --rc-1: #2a78d6;
+    --rc-2: #eb6834;
+    --rc-3: #1baf7a;
+    --rc-4: #eda100;
+    --rc-5: #e87ba4;
+    --rc-6: #008300;
   }
 }
 
@@ -2503,6 +2516,7 @@ a.player-link:hover strong {
 }
 
 .segmented.compact button {
+  flex: 1 1 auto;
   padding: 7px 5px;
   font-size: 12.5px;
 }
@@ -2752,4 +2766,113 @@ a.player-link:hover strong {
 .card.flush > .btn.more {
   margin: 10px auto 14px;
   display: block;
+}
+
+/* Records */
+.records {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+.record-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.record-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+.record-row:hover {
+  background: var(--surface-2);
+}
+.record-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.record-main strong,
+.record-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.record-main small {
+  font-size: 12px;
+}
+.record-value {
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Régions : face-à-face et courbe */
+.versus td,
+.versus thead th:not(.left) {
+  min-width: 52px;
+}
+.region-chart .chips {
+  padding-inline: 0;
+}
+.rc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.rc-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.rc-key[aria-pressed='false'] {
+  opacity: 0.45;
+}
+.rc-swatch {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+}
+.rc-readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 10px 0 2px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.rc-val strong {
+  font-size: 15px;
+}
+.rc-tick {
+  display: inline-block;
+  width: 10px;
+  height: 3px;
+  margin-right: 4px;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+.rc-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.rc-end {
+  stroke: var(--surface);
+  stroke-width: 2;
 }

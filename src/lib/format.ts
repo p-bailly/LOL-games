@@ -94,6 +94,12 @@ export const pct = (part: number, total: number) => (total ? `${Math.round((part
 /** Écart d'or signé : +1 234 → "+1,2k". */
 export const goldDiff = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${kilo(Math.abs(n))}`
 
+/** 31,4 minutes → « 31:24 ». */
+export function clock(minutes: number): string {
+  const s = Math.round(minutes * 60)
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
 /** "26:01" ou 26.02 minutes → minutes décimales. */
 export const minutesOf = (len: string): number => {
   const [m, s] = len.split(':').map(Number)

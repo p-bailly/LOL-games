@@ -150,6 +150,17 @@ export function cargo(query: CargoQuery, signal?: AbortSignal): Promise<Row[]> {
   return enqueue(() => fetchRows(query, signal))
 }
 
+/** Toutes les lignes d'une requête, 500 par 500 (Cargo plafonne chaque réponse) : l'`order_by` doit départager chaque ligne. */
+export async function cargoAll(query: CargoQuery, signal?: AbortSignal, maxPages = 10): Promise<Row[]> {
+  const out: Row[] = []
+  for (let page = 0; page < maxPages; page++) {
+    const rows = await cargo({ ...query, limit: 500, offset: page * 500 }, signal)
+    out.push(...rows)
+    if (rows.length < 500) break
+  }
+  return out
+}
+
 /** `cargo` avec cache mémoire (clé = la requête elle-même). */
 export function cargoCached(query: CargoQuery, ttl: number, signal?: AbortSignal): Promise<Row[]> {
   return cached(`cargo:${JSON.stringify(query)}`, ttl, () => cargo(query, signal))

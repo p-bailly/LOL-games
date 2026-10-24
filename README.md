@@ -46,7 +46,17 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
   perte d'Elo de chaque équipe (somme de ses games) ; le tableau d'une game affiche celle de chaque joueur, et la fiche
   d'un joueur celle de ses dernières games. Historique conservé : 120 jours pour les séries, 90 jours pour les games,
   toutes les compétitions officielles prises en compte par l'Elo.
-- **Stats** d'un tournoi : champions (présence, picks, bans, taux de victoire) et joueurs (KDA, kills, CS, dégâts).
+- **Stats** (onglet Stats), cinq vues :
+  - **Champions** d'un tournoi : présence, picks, bans, taux de victoire ;
+  - **Joueurs** d'un tournoi, « par partie » (KDA, kills, CS, dégâts) ou « par minute » (CS, or et dégâts par minute, part des
+    dégâts et de l'or de l'équipe, participation aux kills, vision par minute) ;
+  - **Équipes** d'un tournoi : taux de victoire, durée moyenne des games, kills, écart d'or, tours, dragons, barons et hérauts
+    par game, taux de victoire côté bleu et côté rouge ;
+  - **Records** d'un tournoi : game la plus courte et la plus longue, plus de kills, plus gros écart d'or, plus longue suite de
+    victoires, et sur une game les meilleures performances individuelles (kills, assists, dégâts, CS, vision, KDA) ;
+  - **Régions** : bilan des compétitions internationales des trois dernières années entre régions (séries et games, par
+    compétition ou cumulé, et face-à-face de chaque région contre les autres), et courbe du niveau de chaque région (moyenne
+    de l'Elo de ses 5 meilleures équipes, mois par mois). La région d'une équipe est celle de sa ligue actuelle.
 - **Équipes** : favoris, effectif et calendrier de chaque équipe. **Joueurs** : fiche, stats sur 12 mois,
   champions les plus joués (12 derniers mois ou toute la carrière, liste complète), dernières games.
 - **Alertes** : début de série, fin de chaque game, game décisive, résultat final.
@@ -151,6 +161,7 @@ src/
   api/cargo.ts         accès aux tables Cargo de Leaguepedia (file d'attente, cache, logos)
   api/leaguepedia.ts   séries, games, drafts, équipes
   api/stats.ts         tournois, classements, effectifs, stats de champions et de joueurs
+  api/games.ts         games et lignes de joueurs d'un tournoi, séries des compétitions internationales (stats d'équipe, records, régions)
   api/lolesports.ts    API LoL Esports (direct), api/live.ts : rapprochement avec les séries de Leaguepedia
   api/ddragon.ts       icônes de champions et d'objets (Data Dragon)
   api/leagues.ts       ligues suivies
