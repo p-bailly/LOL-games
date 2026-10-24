@@ -8,7 +8,7 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
 
 ## Fonctionnalités
 
-- **Matchs** : bandeau des jours, filtre par ligue, séries dans l'ordre de la journée (terminées au-dessus, puis en direct, puis à venir par heure ; la liste s'ouvre sur l'en direct ou le prochain match). En descendant en bas de la liste, le jour suivant (avec des matchs) s'ajoute dessous.
+- **Matchs** : bandeau des jours (épinglé sous l'en-tête, toujours visible), filtre par ligue, séries dans l'ordre de la journée (terminées au-dessus, puis en direct, puis à venir par heure ; la liste s'ouvre sur l'en direct ou le prochain match). En descendant en bas de la liste, le jour suivant (avec des matchs) s'ajoute dessous.
   Les séries à venir ou en cours affichent l'Elo de chaque équipe et ses chances de gagner la série (barre bleu / rouge).
   Heures dans ton fuseau. Série en cours, score de la série (BO1 / BO3 / BO5), game décisive signalée.
 - **Fiche de série**, une game à la fois :
