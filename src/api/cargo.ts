@@ -41,12 +41,12 @@ export const num = (v: unknown): number | undefined => {
   const n = Number(v)
   return Number.isFinite(n) ? n : undefined
 }
-/** Liste Cargo : tableau (CargoExport) ou texte séparé par des virgules (api.php). */
+/** Liste Cargo : tableau, ou texte séparé par « ;; » (effectifs) ou par des virgules. */
 export const list = (v: unknown): string[] =>
   Array.isArray(v)
     ? v.map((x) => str(x).trim())
     : typeof v === 'string' && v
-      ? v.split(',').map((x) => x.trim())
+      ? v.split(v.includes(';;') ? ';;' : ',').map((x) => x.trim())
       : []
 
 /** Valeur d'une clause where entre apostrophes. */
