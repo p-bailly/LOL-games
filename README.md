@@ -19,8 +19,9 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
 - **Direct** (avec une clé LoL Esports, voir plus bas) : score de la série en temps réel, et pour la game en cours
   l'or, les kills, les objectifs, les 10 joueurs (niveau, KDA, CS, vie) et la courbe d'écart d'or.
 - **Classement** de chaque tournoi (séries et games gagnées, série en cours) ou, pour les playoffs, les séries tour
-  par tour. Pour les **Worlds**, un tableau de la **phase suisse** : bilan de chaque équipe, résultat et adversaire
-  de chaque tour, qualifiées (3 victoires), en course et éliminées (3 défaites).
+  par tour. Pour les **Worlds**, la **phase suisse** en bracket comme sur l'affiche officielle (une colonne par tour,
+  une boîte par bilan 0-0, 1-0, 0-1, 2-0…, BO1 ou BO3, affiches « TBD » des tours à venir), plus une vue « Bilans »
+  (résultat et adversaire de chaque équipe à chaque tour ; qualifiées, en course, éliminées).
 - Quand une compétition internationale est en cours (Worlds, MSI, First Stand), elle passe **en premier** : dans
   les filtres de ligues, dans Classement et Stats (choisie d'office) et dans la liste des matchs du jour.
 - **Stats** d'un tournoi : champions (présence, picks, bans, taux de victoire) et joueurs (KDA, kills, CS, dégâts).

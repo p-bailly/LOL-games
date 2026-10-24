@@ -25,9 +25,36 @@ export interface SwissRow {
   status: 'qualified' | 'eliminated' | 'alive'
 }
 
+export interface BracketMatch {
+  /** Absent tant que les équipes ne sont pas connues (« À déterminer »). */
+  id?: string
+  a?: Team
+  b?: Team
+  scoreA?: number
+  scoreB?: number
+  winner?: number
+  date?: string
+  live?: boolean
+}
+
+/** Une boîte du bracket : toutes les séries d'un tour entre équipes ayant le même bilan. */
+export interface BracketBox {
+  wins: number
+  losses: number
+  bestOf: number
+  matches: BracketMatch[]
+}
+
+export interface BracketColumn {
+  round: string
+  boxes: BracketBox[]
+}
+
 export interface Swiss {
   rounds: string[]
   rows: SwissRow[]
+  /** Le bracket : une colonne par tour, une boîte par bilan (0-0, puis 1-0 et 0-1, puis 2-0, 1-1 et 0-2…). */
+  bracket: BracketColumn[]
 }
 
 const isSwissRound = (name: string) => /^Round \d+$/.test(name)
@@ -79,5 +106,68 @@ export function buildSwiss(rounds: Round[], standings: StandingRow[]): Swiss | u
       (place.get(a.team.id) ?? 99) - (place.get(b.team.id) ?? 99) ||
       a.team.name.localeCompare(b.team.name),
   )
-  return { rounds: swiss.map((r) => r.name), rows: list }
+  return { rounds: swiss.map((r) => r.name), rows: list, bracket: buildBracket(swiss, rows, list.length) }
+}
+
+const choose = (n: number, k: number): number => {
+  let r = 1
+  for (let i = 1; i <= k; i++) r = (r * (n - k + i)) / i
+  return Math.round(r)
+}
+
+/**
+ * Bracket complet, y compris les tours à venir : après k tours, 2^-k des équipes de départ ont chaque suite de
+ * résultats, donc la boîte « w-l » du tour k+1 compte N/2 × C(k, w) / 2^k séries (8, 4+4, 2+4+2, 3+3, 3 pour 16 équipes).
+ * Une série est en BO3 quand l'une des deux équipes peut se qualifier ou être éliminée, en BO1 sinon.
+ */
+function buildBracket(rounds: Round[], rows: Map<string, SwissRow>, teams: number): BracketColumn[] {
+  const n = teams || 16
+  const maxRounds = 2 * SWISS_WINS - 1
+  const now = Date.now()
+  // Bilan d'une équipe avant le tour k.
+  const before = (id: string, k: number) => {
+    const cells = rows.get(id)?.cells ?? []
+    let w = 0
+    let l = 0
+    for (let j = 0; j < k; j++) {
+      if (cells[j]?.win === true) w++
+      if (cells[j]?.win === false) l++
+    }
+    return { w, l }
+  }
+  const columns: BracketColumn[] = []
+  for (let k = 0; k < maxRounds; k++) {
+    const known = rounds[k]?.matches.filter((m) => m.a.id !== 'TBD' && m.b.id !== 'TBD') ?? []
+    const boxes: BracketBox[] = []
+    for (let w = SWISS_WINS - 1; w >= 0; w--) {
+      const l = k - w
+      if (l < 0 || l >= SWISS_WINS) continue
+      const slots = Math.round(((n / 2) * choose(k, w)) / 2 ** k)
+      const mine = known
+        .filter((m) => {
+          const r = before(m.a.id, k)
+          return r.w === w && r.l === l
+        })
+        .map((m): BracketMatch => {
+          const done = m.winner === 1 || m.winner === 2
+          const start = new Date(m.date).getTime()
+          return {
+            id: m.id,
+            a: m.a,
+            b: m.b,
+            scoreA: m.scoreA,
+            scoreB: m.scoreB,
+            winner: done ? m.winner : undefined,
+            date: m.date,
+            live: !done && now >= start && now < start + (m.bestOf * 55 + 20) * 60_000,
+          }
+        })
+        .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))
+      const bestOf = known.find((m) => before(m.a.id, k).w === w && before(m.a.id, k).l === l)?.bestOf ?? (w === SWISS_WINS - 1 || l === SWISS_WINS - 1 ? 3 : 1)
+      while (mine.length < slots) mine.push({})
+      boxes.push({ wins: w, losses: l, bestOf, matches: mine })
+    }
+    columns.push({ round: `Tour ${k + 1}`, boxes })
+  }
+  return columns
 }

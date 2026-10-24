@@ -1,0 +1,96 @@
+import { useEffect, useRef } from 'react'
+import type { BracketBox, BracketMatch, Swiss } from '../api/swiss'
+import { timeOf } from '../lib/format'
+import { href } from '../lib/router'
+import { useFavorites } from '../lib/store'
+import { TeamLogo } from './ui'
+
+function Row({ m, favs }: { m: BracketMatch; favs: string[] }) {
+  if (!m.a || !m.b) {
+    return (
+      <div className="bm tbd">
+        <span className="bm-team">TBD</span>
+        <span className="bm-mid">vs</span>
+        <span className="bm-team right">TBD</span>
+      </div>
+    )
+  }
+  const done = m.winner === 1 || m.winner === 2
+  return (
+    <a className={`bm ${m.live ? 'live' : ''}`} href={href.match(m.id!)}>
+      <span className={`bm-team ${done && m.winner !== 1 ? 'lost' : ''} ${favs.includes(m.a.id) ? 'fav' : ''}`}>
+        <b>{m.a.code}</b>
+        <TeamLogo team={m.a} size={22} />
+      </span>
+      <span className="bm-mid">
+        {done ? (
+          <strong>
+            {m.scoreA ?? 0}–{m.scoreB ?? 0}
+          </strong>
+        ) : m.live ? (
+          <span className="bm-live">LIVE</span>
+        ) : (
+          <>
+            vs<small>{m.date ? timeOf(m.date) : ''}</small>
+          </>
+        )}
+      </span>
+      <span className={`bm-team right ${done && m.winner !== 2 ? 'lost' : ''} ${favs.includes(m.b.id) ? 'fav' : ''}`}>
+        <TeamLogo team={m.b} size={22} />
+        <b>{m.b.code}</b>
+      </span>
+    </a>
+  )
+}
+
+function Box({ box, favs }: { box: BracketBox; favs: string[] }) {
+  return (
+    <section className="bbox">
+      <h4>
+        {box.wins}-{box.losses}
+      </h4>
+      <div className="bbox-body">
+        {box.matches.map((m, i) => (
+          <Row key={m.id ?? `tbd${i}`} m={m} favs={favs} />
+        ))}
+      </div>
+      <footer>BO{box.bestOf}</footer>
+    </section>
+  )
+}
+
+/** Bracket de la phase suisse : une colonne par tour, une boîte par bilan, comme sur l'affiche officielle. */
+export function SwissBracket({ swiss }: { swiss: Swiss }) {
+  const { ids: favs } = useFavorites()
+  const scroller = useRef<HTMLDivElement>(null)
+  // On ouvre sur le tour en cours : le premier avec une série connue et pas encore terminée.
+  const current = Math.max(
+    0,
+    swiss.bracket.findIndex((c) => c.boxes.some((b) => b.matches.some((m) => m.a && m.winner === undefined))),
+  )
+  useEffect(() => {
+    const el = scroller.current?.children[current] as HTMLElement | undefined
+    if (el && scroller.current) scroller.current.scrollLeft = Math.max(0, el.offsetLeft - 12)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current])
+
+  return (
+    <div className="bracket-wrap">
+      <div className="bracket" ref={scroller}>
+        {swiss.bracket.map((col, i) => (
+          <div key={col.round} className={`bcol ${i === current ? 'current' : ''}`}>
+            <h3>{col.round}</h3>
+            {col.boxes.map((b) => (
+              <Box key={`${b.wins}-${b.losses}`} box={b} favs={favs} />
+            ))}
+          </div>
+        ))}
+      </div>
+      <p className="footnote">
+        Une colonne par tour, une boîte par bilan (victoires-défaites avant le tour). 3 victoires qualifient pour les
+        quarts de finale, 3 défaites éliminent. BO3 quand une équipe peut se qualifier ou être éliminée. Les affiches
+        « TBD » dépendent des résultats du tour précédent. Touche une série pour ouvrir sa fiche.
+      </p>
+    </div>
+  )
+}

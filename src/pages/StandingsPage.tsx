@@ -3,6 +3,7 @@ import { fetchStandings, fetchTournamentRounds } from '../api/stats'
 import { leagueByKey } from '../api/leagues'
 import { buildSwiss } from '../api/swiss'
 import type { StandingRow } from '../api/types'
+import { SwissBracket } from '../components/SwissBracket'
 import { SwissTable } from '../components/SwissTable'
 import { TournamentPicker, useTournamentPicker } from '../components/TournamentPicker'
 import { Empty, ErrorBox, Loading, PageHeader, Segmented, TeamLogo } from '../components/ui'
@@ -11,7 +12,7 @@ import { shortDate, timeOf } from '../lib/format'
 import { href } from '../lib/router'
 import { useFavorites } from '../lib/store'
 
-type View = 'table' | 'swiss' | 'rounds'
+type View = 'table' | 'swiss' | 'balances' | 'rounds'
 
 export function StandingsPage({ active }: { active: boolean }) {
   const picker = useTournamentPicker(active)
@@ -24,7 +25,7 @@ export function StandingsPage({ active }: { active: boolean }) {
   const rows = standings.data ?? []
   const swiss = useMemo(() => (rounds.data ? buildSwiss(rounds.data, rows) : undefined), [rounds.data, standings.data])
   // Phase suisse d'abord ; sans classement (playoffs, élimination directe), les séries tour par tour.
-  const shown: View = (view === 'swiss' && !swiss ? undefined : view) ?? (swiss ? 'swiss' : standings.data && rows.length === 0 && rounds.data ? 'rounds' : 'table')
+  const shown: View = ((view === 'swiss' || view === 'balances') && !swiss ? undefined : view) ?? (swiss ? 'swiss' : standings.data && rows.length === 0 && rounds.data ? 'rounds' : 'table')
   const league = leagueByKey(picker.league)
 
   return (
@@ -36,9 +37,14 @@ export function StandingsPage({ active }: { active: boolean }) {
           value={shown}
           onChange={setView}
           options={[
-            ...(swiss ? [{ value: 'swiss' as const, label: 'Suisse' }] : []),
+            ...(swiss
+              ? [
+                  { value: 'swiss' as const, label: 'Suisse' },
+                  { value: 'balances' as const, label: 'Bilans' },
+                ]
+              : []),
             { value: 'table' as const, label: 'Classement' },
-            { value: 'rounds' as const, label: 'Séries par tour' },
+            { value: 'rounds' as const, label: 'Tours' },
           ]}
         />
       </div>
@@ -54,7 +60,8 @@ export function StandingsPage({ active }: { active: boolean }) {
             {rows.length > 0 && <Table rows={rows} />}
           </>
         )}
-        {tournament && shown === 'swiss' && swiss && <SwissTable swiss={swiss} />}
+        {tournament && shown === 'swiss' && swiss && <SwissBracket swiss={swiss} />}
+        {tournament && shown === 'balances' && swiss && <SwissTable swiss={swiss} />}
         {tournament && shown === 'rounds' && (
           <>
             {rounds.error && !rounds.data && <ErrorBox error={rounds.error} onRetry={rounds.refresh} />}
