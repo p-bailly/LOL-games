@@ -109,11 +109,12 @@ export function EloRanking({ active }: { active: boolean }) {
           </button>
         )}
         <p className="footnote">
-          Classement Elo calculé sur toutes les séries de Leaguepedia depuis 2011 ({(data.quality.n / 1000).toFixed(0)} 000 séries des ligues majeures et secondaires), mis à jour avec les dernières séries
-          {data.added ? ` (${data.added} depuis le calcul du ${shortDate(new Date(data.until).toISOString())})` : ''}. Toute équipe démarre à la moyenne de sa ligue ; sa note bouge beaucoup à ses
-          premières séries (K = {data.params.kMax}) puis se stabilise (K = {data.params.kMin}), plus encore en compétition internationale, et se rapproche de la moyenne de sa ligue après {data.params.gap} jours
-          sans jouer. Réglage mesuré sur l’historique : {(data.quality.accuracy * 100).toFixed(0)} % des vainqueurs de séries bien prévus ({(data.quality.intlAccuracy * 100).toFixed(0)} % en compétition
-          internationale). Les ligues secondaires et les régions qui se rencontrent rarement ne sont pas vraiment comparables entre elles. Évolution : sur environ 90 jours.
+          Classement Elo calculé game par game sur toutes les games de Leaguepedia depuis 2011 ({Math.round(data.quality.n / 1000)} 000 games depuis 2015 pour le réglage), mis à jour avec les dernières
+          séries{data.added ? ` (${data.added} depuis le calcul du ${shortDate(new Date(data.until).toISOString())})` : ''}. Chaque game compte pareil, qu’elle soit dans un BO1, un BO3 ou un BO5 : seul
+          compte son résultat par rapport à ce qui était attendu. Toute équipe démarre à la moyenne de sa ligue ; sa note bouge beaucoup à ses premières games (K = {data.params.kMax}) puis se stabilise
+          (K = {data.params.kMin}), et se rapproche de la moyenne de sa ligue après {data.params.gap} jours sans jouer. Réglage mesuré sur l’historique : {(data.quality.accuracy * 100).toFixed(0)} % des
+          vainqueurs de games bien prévus ({(data.quality.intlAccuracy * 100).toFixed(0)} % en compétition internationale). « Provisoire » : moins de 60 games, la note peut encore bouger beaucoup. Les ligues
+          secondaires et les régions qui se rencontrent rarement ne sont pas vraiment comparables entre elles. Évolution : sur environ 90 jours.
           {loading ? ' Mise à jour…' : ''}
         </p>
       </div>
@@ -134,7 +135,7 @@ function EloRow({ t, pos, fav }: { t: EloTeam; pos: number; fav: boolean }) {
             {fav && <span className="fav-mark">★</span>}
           </strong>
           <small className="muted">
-            {[regionFr(t.region), `${t.series} séries`, `${Math.round((t.wins / Math.max(1, t.wins + t.losses)) * 100)} % de victoires`.replace(' de victoires', '')].filter(Boolean).join(' · ')}
+            {[regionFr(t.region), `${t.series} séries`, `${Math.round((t.wins / Math.max(1, t.wins + t.losses)) * 100)} % de victoires`].filter(Boolean).join(' · ')}
           </small>
         </span>
         <span className="elo-score">

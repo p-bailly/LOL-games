@@ -1,4 +1,5 @@
 // Calcule le classement Elo mondial sur tout l'historique de Leaguepedia (depuis 2011) et écrit public/elo.json.
+// Le calcul est fait game par game : chaque game d'une série (BO1, BO3 ou BO5) pèse pareil.
 //
 //   node scripts/build-elo.mjs            calcule avec les paramètres par défaut (src/lib/eloCore.ts)
 //   node scripts/build-elo.mjs --tune     cherche d'abord les meilleurs paramètres sur l'historique
@@ -108,15 +109,13 @@ console.log(`${series.length} séries du ${new Date(series[0].t).toISOString().s
 let params = { ...DEFAULTS }
 const FROM = Date.parse('2015-01-01')
 if (args.has('--tune')) {
+  // Toutes les games comptent pareil : on ne règle ni poids international ou playoffs, ni bonus de série.
   const grid = {
     kMax: [32, 48, 64, 96, 128],
-    kMin: [10, 14, 18, 24, 32],
-    nHalf: [6, 10, 15, 25, 40],
-    intl: [1, 1.5, 2, 3],
-    playoffs: [1, 1.1, 1.25],
-    boost: [0, 0.1, 0.15, 0.25],
-    regress: [0, 0.1, 0.2, 0.35, 0.5],
-    gap: [90, 150, 240],
+    kMin: [8, 12, 18, 24, 32],
+    nHalf: [6, 12, 20, 35, 60],
+    regress: [0, 0.2, 0.35, 0.5, 0.65],
+    gap: [60, 90, 150, 240],
     seed: [false, true],
   }
   // Objectif : moitié qualité globale, moitié qualité sur les compétitions internationales (comparaison entre régions).
@@ -132,7 +131,7 @@ if (args.has('--tune')) {
         if (objective(e) < objective(best) - 1e-5) {
           best = e
           params = cand
-          console.log(`  ${k}=${v} → logloss ${e.logloss.toFixed(4)} (international ${e.intlLogloss.toFixed(4)}, ${(e.intlAccuracy * 100).toFixed(1)} % bien prévues)`)
+          console.log(`  ${k}=${v} → logloss ${e.logloss.toFixed(4)} (international ${e.intlLogloss.toFixed(4)}, ${(e.intlAccuracy * 100).toFixed(1)} % de games bien prévues)`)
         }
       }
     }
@@ -140,7 +139,7 @@ if (args.has('--tune')) {
   console.log('retenu', JSON.stringify(params))
 }
 const score = evaluate(series, params, FROM)
-console.log(`qualité depuis 2015 : logloss ${score.logloss.toFixed(4)}, ${(score.accuracy * 100).toFixed(1)} % de séries bien prévues (${score.n} séries) ; international : ${score.intlLogloss.toFixed(4)}, ${(score.intlAccuracy * 100).toFixed(1)} % (${score.intlN} séries)`)
+console.log(`qualité depuis 2015 : logloss ${score.logloss.toFixed(4)}, ${(score.accuracy * 100).toFixed(1)} % de games bien prévues (${score.n} games) ; international : ${score.intlLogloss.toFixed(4)}, ${(score.intlAccuracy * 100).toFixed(1)} % (${score.intlN} games)`)
 
 // Calcul final, avec un point d'historique par équipe et par mois.
 const state = {}
@@ -175,4 +174,4 @@ const out = { v: 1, builtAt: new Date().toISOString(), until, params, teams, his
 writeFileSync(join(ROOT, 'public', 'elo.json'), JSON.stringify(out))
 console.log(`public/elo.json : ${active.length} équipes actives, ${(JSON.stringify(out).length / 1024).toFixed(0)} Ko`)
 const top = active.sort((x, y) => y[1].r - x[1].r).slice(0, 15)
-for (const [id, s] of top) console.log(`  ${Math.round(s.r)}  ${id}  (${s.lg}, ${s.n} séries)`)
+for (const [id, s] of top) console.log(`  ${Math.round(s.r)}  ${id}  (${s.lg}, ${s.n} games)`)

@@ -3,6 +3,7 @@ import { fetchStandings, fetchTournamentRounds } from '../api/stats'
 import { leagueByKey } from '../api/leagues'
 import { buildSwiss } from '../api/swiss'
 import type { StandingRow } from '../api/types'
+import { EloPlayers } from '../components/EloPlayers'
 import { EloRanking } from '../components/EloRanking'
 import { Projection } from '../components/Projection'
 import { SwissBracket } from '../components/SwissBracket'
@@ -19,6 +20,7 @@ type View = 'table' | 'swiss' | 'balances' | 'projection' | 'rounds'
 export function StandingsPage({ active }: { active: boolean }) {
   const picker = useTournamentPicker(active)
   const [mode, setMode] = useState<'tournament' | 'elo'>('tournament')
+  const [eloView, setEloView] = useState<'teams' | 'players'>('teams')
   const { tournament } = picker
   const [view, setView] = useState<View | undefined>()
 
@@ -45,7 +47,19 @@ export function StandingsPage({ active }: { active: boolean }) {
         />
       </div>
       {mode === 'elo' ? (
-        <EloRanking active={active} />
+        <>
+          <div className="toolbar">
+            <Segmented<'teams' | 'players'>
+              value={eloView}
+              onChange={setEloView}
+              options={[
+                { value: 'teams', label: 'Équipes' },
+                { value: 'players', label: 'Joueurs' },
+              ]}
+            />
+          </div>
+          {eloView === 'teams' ? <EloRanking active={active} /> : <EloPlayers active={active} />}
+        </>
       ) : (
         <>
       <TournamentPicker picker={picker} />

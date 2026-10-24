@@ -22,13 +22,14 @@ export interface SeriesIn {
 export interface TeamState {
   /** Note Elo. */
   r: number
-  /** Séries jouées. */
+  /** Games jouées. */
   n: number
   /** Dernière série, en jours depuis 1970. */
   last: number
   /** Ligue d'origine (la dernière ligue nationale jouée). */
   lg: string
   peak: number
+  /** Games gagnées et perdues. */
   w: number
   l: number
 }
@@ -42,12 +43,10 @@ export interface Params {
   kMin: number
   /** Nombre de séries pour que K soit à mi-chemin entre kMax et kMin. */
   nHalf: number
-  /** Poids d'une série de compétition internationale. */
+  /** Poids d'une game de compétition internationale (1 : toutes les games comptent pareil). */
   intl: number
-  /** Poids d'une série de playoffs. */
+  /** Poids d'une game de playoffs (1 : toutes les games comptent pareil). */
   playoffs: number
-  /** Bonus par game supplémentaire dans la série (une victoire 3-0 en BO5 pèse plus qu'un BO1). */
-  boost: number
   /** Après `gap` jours d'inactivité, part de l'écart à la moyenne de la ligue effacée (changements d'effectif). */
   regress: number
   gap: number
@@ -56,7 +55,7 @@ export interface Params {
 }
 
 /** Paramètres retenus après réglage sur l'historique (voir scripts/build-elo.mjs --tune). */
-export const DEFAULTS: Params = { kMax: 96, kMin: 18, nHalf: 6, intl: 2, playoffs: 1.1, boost: 0.25, regress: 0.5, gap: 90, seed: true }
+export const DEFAULTS: Params = { kMax: 128, kMin: 18, nHalf: 6, intl: 1, playoffs: 1, regress: 0.65, gap: 90, seed: true }
 
 export const BASE = 1500
 const DAY = 86_400_000
@@ -95,10 +94,25 @@ function leagueMean(state: EloState, league: string, day: number, except?: strin
 }
 
 /**
- * Applique une série à l'état. Renvoie la chance qu'avait A de la gagner (pour mesurer la qualité des prévisions)
- * et les notes avant la série.
+ * Ordre des games d'une série : on ne connaît que le score (par exemple 3-1), pas l'ordre. Les victoires de chaque
+ * équipe sont réparties à intervalles réguliers, la dernière game revenant au vainqueur de la série. `true` : A gagne.
  */
-export function applySeries(state: EloState, s: SeriesIn, p: Params): { pa: number; ra: number; rb: number } {
+export function gameOrder(sa: number, sb: number): boolean[] {
+  const slots: { pos: number; a: boolean }[] = []
+  for (let i = 0; i < sa; i++) slots.push({ pos: (i + 0.5) / sa, a: true })
+  for (let i = 0; i < sb; i++) slots.push({ pos: (i + 0.5) / sb, a: false })
+  // À position égale, la game du perdant de la série passe avant : le vainqueur gagne la dernière.
+  const aWins = sa > sb
+  slots.sort((x, y) => x.pos - y.pos || (x.a === aWins ? 1 : -1))
+  return slots.map((x) => x.a)
+}
+
+/**
+ * Applique une série à l'état, game par game : chaque game est jouée l'une après l'autre avec les notes du moment,
+ * et pèse pareil quel que soit le format de la série (BO1, BO3 ou BO5). `onGame` reçoit, avant chaque mise à jour,
+ * la chance qu'avait A de gagner la game et son résultat (pour mesurer la qualité des prévisions).
+ */
+export function applySeries(state: EloState, s: SeriesIn, p: Params, onGame?: (pa: number, aWon: boolean) => void): { ra: number; rb: number } {
   const day = Math.floor(s.t / DAY)
   const touch = (id: string): TeamState => {
     let t = state[id]
@@ -114,28 +128,34 @@ export function applySeries(state: EloState, s: SeriesIn, p: Params): { pa: numb
   }
   const ta = touch(s.a)
   const tb = touch(s.b)
-  const pa = gameProb(ta.r, tb.r)
-  const games = s.sa + s.sb
-  const share = games > 0 ? s.sa / games : 0.5
-  const weight = (s.intl ? p.intl : s.playoffs ? p.playoffs : 1) * (1 + p.boost * Math.max(0, Math.min(games, 5) - 1))
   const ra = ta.r
   const rb = tb.r
-  ta.r += kOf(ta.n, p) * weight * (share - pa)
-  tb.r += kOf(tb.n, p) * weight * (1 - share - (1 - pa))
-  for (const [t, won] of [[ta, s.sa > s.sb], [tb, s.sb > s.sa]] as const) {
-    t.n++
+  const weight = s.intl ? p.intl : s.playoffs ? p.playoffs : 1
+  for (const aWon of gameOrder(s.sa, s.sb)) {
+    const pa = gameProb(ta.r, tb.r)
+    onGame?.(pa, aWon)
+    const sa = aWon ? 1 : 0
+    ta.r += kOf(ta.n, p) * weight * (sa - pa)
+    tb.r += kOf(tb.n, p) * weight * (1 - sa - (1 - pa))
+    ta.n++
+    tb.n++
+    if (aWon) (ta.w++, tb.l++)
+    else (tb.w++, ta.l++)
+    if (ta.r > ta.peak) ta.peak = ta.r
+    if (tb.r > tb.peak) tb.peak = tb.r
+  }
+  for (const t of [ta, tb]) {
     t.last = day
-    if (won) t.w++
-    else t.l++
-    if (t.r > t.peak) t.peak = t.r
     if (!s.intl) t.lg = s.league
   }
-  return { pa, ra, rb }
+  return { ra, rb }
 }
 
 export interface Score {
+  /** Perte logarithmique moyenne par game (plus bas = mieux). */
   logloss: number
   accuracy: number
+  /** Nombre de games mesurées. */
   n: number
   /** Mêmes mesures sur les seules compétitions internationales, où se joue la comparaison entre régions. */
   intlLogloss: number
@@ -143,22 +163,22 @@ export interface Score {
   intlN: number
 }
 
-/** Qualité des prévisions de vainqueur de série (perte logarithmique : plus bas = mieux), à partir de `from`. */
+/** Qualité des prévisions de vainqueur de game, à partir de `from`. */
 export function evaluate(series: SeriesIn[], p: Params, from = 0): Score {
   const state: EloState = {}
   const acc = { all: { loss: 0, hit: 0, n: 0 }, intl: { loss: 0, hit: 0, n: 0 } }
   for (const s of series) {
-    const { pa } = applySeries(state, s, p)
-    if (s.t < from || s.sa === s.sb) continue
-    const ps = Math.min(0.995, Math.max(0.005, seriesProb(pa, s.bo)))
-    const aWon = s.sa > s.sb
-    const loss = -Math.log(aWon ? ps : 1 - ps)
-    const hit = aWon === ps > 0.5 ? 1 : 0
-    for (const k of s.intl ? (['all', 'intl'] as const) : (['all'] as const)) {
-      acc[k].loss += loss
-      acc[k].hit += hit
-      acc[k].n++
-    }
+    applySeries(state, s, p, (pa, aWon) => {
+      if (s.t < from) return
+      const ps = Math.min(0.995, Math.max(0.005, pa))
+      const loss = -Math.log(aWon ? ps : 1 - ps)
+      const hit = aWon === ps > 0.5 ? 1 : 0
+      for (const k of s.intl ? (['all', 'intl'] as const) : (['all'] as const)) {
+        acc[k].loss += loss
+        acc[k].hit += hit
+        acc[k].n++
+      }
+    })
   }
   const { all, intl } = acc
   return { logloss: all.loss / all.n, accuracy: all.hit / all.n, n: all.n, intlLogloss: intl.loss / (intl.n || 1), intlAccuracy: intl.hit / (intl.n || 1), intlN: intl.n }

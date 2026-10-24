@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { fetchPlayerElo, ROLE_NAMES } from '../api/eloPlayers'
 import { fetchPlayerGames, fetchPlayerInfo, type PlayerGame } from '../api/stats'
 import { ROLE_FR } from '../api/leagues'
 import { resolveTeams, teamOf } from '../api/leaguepedia'
@@ -20,6 +21,7 @@ export function PlayerPage({ id }: { id: string }) {
     return p ?? null
   }, [id])
   const games = usePolling((s) => fetchPlayerGames(id, s), [id])
+  const elo = usePolling(() => fetchPlayerElo(), [], null).data?.byId.get(id)
 
   const display = info.data?.id ?? id.replace(/\s*\(.*\)$/, '')
   const a = age(info.data?.birthdate)
@@ -36,6 +38,12 @@ export function PlayerPage({ id }: { id: string }) {
             <p className="muted">
               {[ROLE_FR[info.data.role] ?? info.data.role, info.data.country, a ? `${a} ans` : '', info.data.retired ? 'retraité' : ''].filter(Boolean).join(' · ')}
             </p>
+            {elo && (
+              <p className="team-elo">
+                Elo : <strong>{Math.round(elo.rating)}</strong>
+                {elo.roleRank ? ` · ${elo.roleRank}${elo.roleRank === 1 ? 'er' : 'e'} ${ROLE_FR[ROLE_NAMES[elo.role]]} des ligues majeures` : ` · ${elo.rank}${elo.rank === 1 ? 'er' : 'e'} mondial`}
+              </p>
+            )}
             {info.data.team && (
               <a className="player-team" href={href.team(info.data.team)}>
                 Équipe : <strong>{teamOf(info.data.team).name}</strong>

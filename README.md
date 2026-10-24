@@ -30,15 +30,17 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
   demies, la finale et de **gagner le titre**. La fiche d'une série affiche aussi les chances de gagner la série.
   Force des équipes : l'Elo mondial ci-dessus (estimation, pas un pronostic officiel ; les égalités sont tirées au sort et les quarts, quand ils ne sont pas
   connus, tirés meilleur bilan contre moins bon).
-- **Elo mondial** (onglet Classement) : toutes les équipes actives, de la meilleure à la plus faible, avec leur
-  note, leur évolution sur 90 jours, leurs séries et leur taux de victoires. Le calcul porte sur **toutes les
-  séries de Leaguepedia depuis 2011** (57 000 séries, ligues majeures et secondaires) : `scripts/build-elo.mjs`
-  le fait une fois et écrit `public/elo.json` ; l'appli y ajoute les séries jouées depuis. Une équipe démarre à la
-  moyenne de sa ligue, son K est élevé au début (96) puis baisse vers 18 pour que la note converge vite, les
-  compétitions internationales comptent double, et une longue absence rapproche la note de la moyenne de la ligue.
-  Ces réglages ont été choisis par `node scripts/build-elo.mjs --tune`, qui minimise l'erreur de prévision sur
-  l'historique (66 % des vainqueurs de séries bien prévus). Les Chances et les probabilités de victoire utilisent
-  cette note.
+- **Elo mondial** (onglet Classement), pour les équipes et pour les joueurs : note, évolution sur 90 jours, games
+  jouées, taux de victoires. Le calcul est fait **game par game** et chaque game compte pareil, qu'elle soit dans
+  un BO1, un BO3 ou un BO5 (pas de bonus de série, pas de poids différent pour les playoffs ou l'international). Il
+  porte sur tout l'historique de Leaguepedia depuis 2011 : 57 000 séries (93 000 games) pour les équipes, 89 000 games
+  pour les joueurs (la force d'une équipe y est la moyenne de ses cinq joueurs). `scripts/build-elo.mjs` et
+  `scripts/build-player-elo.mjs` font le calcul une fois et écrivent `public/elo.json` et `public/elo-players.json` ;
+  l'appli y ajoute les games jouées depuis. Une équipe ou un joueur démarre à la moyenne de sa ligue (ou de ses
+  coéquipiers), son K est élevé au début puis baisse pour que la note converge vite, et une longue absence rapproche la
+  note de la moyenne de la ligue. Les réglages sont choisis par `--tune`, qui minimise l'erreur de prévision du
+  vainqueur de chaque game sur l'historique (64 % de games bien prévues pour les équipes). Les Chances et les
+  probabilités de victoire utilisent l'Elo des équipes.
 - **Stats** d'un tournoi : champions (présence, picks, bans, taux de victoire) et joueurs (KDA, kills, CS, dégâts).
 - **Équipes** : favoris, effectif et calendrier de chaque équipe. **Joueurs** : fiche, stats sur 12 mois,
   champions les plus joués, dernières games.
