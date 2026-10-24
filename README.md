@@ -91,7 +91,11 @@ L'appli Android partage la liste de tes **équipes favorites** avec le launcher 
 par équipe, dans l'ordre des favoris : `team_id` = nom Leaguepedia de l'équipe, `abbr` et `name`). Seuls Nimbus et
 l'appli elle-même peuvent lire cette adresse.
 
-Nimbus doit lire cette nouvelle adresse pour afficher les équipes LoL (il lit aujourd'hui celle de Basket Live).
+Nimbus lit cette adresse pour montrer, sur sa page de déverrouillage, les séries en direct de ces équipes et leurs
+résultats récents (calendrier de lolesports.com, relu toutes les 15 s tant qu'une série est en cours) : comme pour
+Basket Live, un bandeau au logo de LoL Live. Il reconnaît une équipe à son nom Leaguepedia (`team_id`), sinon à son
+sigle (`abbr`) : ces deux colonnes doivent donc rester celles de Leaguepedia. Nimbus met aussi LoL Live dans les
+places « Jeux & perso » de ses accueils papier.
 
 ## Lancer l'app en local
 
