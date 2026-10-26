@@ -272,28 +272,190 @@ function side(raw: RawFrameTeam | undefined, meta: RawTeamMeta | undefined): Liv
   }
 }
 
-/** Dernière image connue d'une game en cours. */
-export async function fetchLiveFrame(gameId: string, signal?: AbortSignal): Promise<LiveFrame | undefined> {
-  // Le flux refuse les horodatages trop récents : on recule jusqu'à obtenir des images.
+/**
+ * Interroge le flux sur un instant récent. Il refuse les horodatages trop récents (retard de 30 à 60 s) : on recule
+ * jusqu'à obtenir des images.
+ */
+async function recent<T extends { frames?: unknown[] }>(kind: 'window' | 'details', gameId: string, signal?: AbortSignal): Promise<T | undefined> {
   for (const lag of [45, 75, 120, 240]) {
-    const url = `${FEED}/window/${gameId}?startingTime=${encodeURIComponent(startingTime(lag))}`
-    let w: RawWindow
     try {
-      w = await get<RawWindow>(url, signal)
+      const w = await get<T>(`${FEED}/${kind}/${gameId}?startingTime=${encodeURIComponent(startingTime(lag))}`, signal)
+      if (w.frames?.length) return w
     } catch (e) {
       if ((e as Error).name === 'AbortError') throw e
-      continue
-    }
-    const last = w.frames?.[w.frames.length - 1]
-    if (!last) continue
-    return {
-      gameId,
-      patch: w.gameMetadata?.patchVersion,
-      state: last.gameState ?? '',
-      at: last.rfc460Timestamp ?? '',
-      blue: side(last.blueTeam, w.gameMetadata?.blueTeamMetadata),
-      red: side(last.redTeam, w.gameMetadata?.redTeamMetadata),
     }
   }
   return undefined
+}
+
+/** Dernière image connue d'une game en cours. */
+export async function fetchLiveFrame(gameId: string, signal?: AbortSignal): Promise<LiveFrame | undefined> {
+  const w = await recent<RawWindow>('window', gameId, signal)
+  const last = w?.frames?.[w.frames.length - 1]
+  if (!w || !last) return undefined
+  return {
+    gameId,
+    patch: w.gameMetadata?.patchVersion,
+    state: last.gameState ?? '',
+    at: last.rfc460Timestamp ?? '',
+    blue: side(last.blueTeam, w.gameMetadata?.blueTeamMetadata),
+    red: side(last.redTeam, w.gameMetadata?.redTeamMetadata),
+  }
+}
+
+// ---------- Détail d'un joueur (objets, runes, sorts, chiffres de combat) ----------
+
+export interface PlayerDetails {
+  /** Numéros Data Dragon : objets, babiole et consommables mêlés (voir `useDetailData` pour les distinguer). */
+  items: number[]
+  /** Runes choisies : 4 de l'arbre principal (la première est la rune clé), 2 du secondaire, 3 bonus de stats. */
+  perks: number[]
+  style?: number
+  subStyle?: number
+  /** Une lettre (Q, W, E, R) par niveau : l'ordre de montée des sorts. */
+  skills: string[]
+  killShare: number
+  damageShare: number
+  wardsPlaced: number
+  wardsDestroyed: number
+  attackDamage: number
+  abilityPower: number
+  armor: number
+  magicResist: number
+  critical: number
+  lifeSteal: number
+  tenacity: number
+}
+
+interface RawDetails {
+  frames?: {
+    participants?: {
+      participantId: number
+      items?: number[]
+      perkMetadata?: { styleId?: number; subStyleId?: number; perks?: number[] }
+      abilities?: string[]
+      killParticipation?: number
+      championDamageShare?: number
+      wardsPlaced?: number
+      wardsDestroyed?: number
+      attackDamage?: number
+      abilityPower?: number
+      armor?: number
+      magicResistance?: number
+      criticalChance?: number
+      lifeSteal?: number
+      tenacity?: number
+    }[]
+  }[]
+}
+
+/** Détail des 10 joueurs de la game, par numéro de participant. Appelé seulement quand une carte de joueur est ouverte. */
+export async function fetchLiveDetails(gameId: string, signal?: AbortSignal): Promise<Map<number, PlayerDetails> | undefined> {
+  const d = await recent<RawDetails>('details', gameId, signal)
+  const last = d?.frames?.[d.frames.length - 1]
+  if (!last) return undefined
+  return new Map(
+    (last.participants ?? []).map((p) => [
+      p.participantId,
+      {
+        items: p.items ?? [],
+        perks: p.perkMetadata?.perks ?? [],
+        style: p.perkMetadata?.styleId,
+        subStyle: p.perkMetadata?.subStyleId,
+        skills: p.abilities ?? [],
+        killShare: p.killParticipation ?? 0,
+        damageShare: p.championDamageShare ?? 0,
+        wardsPlaced: p.wardsPlaced ?? 0,
+        wardsDestroyed: p.wardsDestroyed ?? 0,
+        attackDamage: p.attackDamage ?? 0,
+        abilityPower: p.abilityPower ?? 0,
+        armor: p.armor ?? 0,
+        magicResist: p.magicResistance ?? 0,
+        critical: p.criticalChance ?? 0,
+        lifeSteal: p.lifeSteal ?? 0,
+        tenacity: p.tenacity ?? 0,
+      } satisfies PlayerDetails,
+    ]),
+  )
+}
+
+// ---------- Courbe d'or de la game ----------
+// Le flux garde l'historique de la game : à l'ouverture de la page, on le relit en remontant d'une minute à la fois
+// (quelques secondes pour toute une game), puis chaque image reçue complète la courbe. Gardé en mémoire par game.
+
+export interface GoldPoint {
+  /** Instant de l'image (ms). */
+  t: number
+  blue: number
+  red: number
+}
+
+interface GoldHistory {
+  points: Map<number, GoldPoint>
+  done: boolean
+  loading?: Promise<void>
+}
+const histories = new Map<string, GoldHistory>()
+const historyOf = (gameId: string): GoldHistory => {
+  let h = histories.get(gameId)
+  if (!h) histories.set(gameId, (h = { points: new Map(), done: false }))
+  return h
+}
+const sec = (t: number) => Math.floor(t / 1000)
+
+/** Ajoute l'image reçue à la courbe de sa game. */
+export function recordGold(frame: LiveFrame) {
+  const t = Date.parse(frame.at)
+  if (Number.isFinite(t)) historyOf(frame.gameId).points.set(sec(t), { t, blue: frame.blue.gold, red: frame.red.gold })
+}
+
+/** Points de la courbe d'or d'une game, du plus ancien au plus récent. */
+export const goldSeries = (gameId: string): GoldPoint[] => [...historyOf(gameId).points.values()].sort((a, b) => a.t - b.t)
+
+const MINUTE = 60_000
+const BATCH = 6
+const MAX_MINUTES = 100
+
+/**
+ * Relit l'historique de la game avant `frame`, une image par minute, jusqu'au début (ou 100 minutes). Une seule fois par game :
+ * le chargement va à son terme même si l'écran est quitté, il sert la prochaine visite.
+ */
+export function loadGoldHistory(frame: LiveFrame): Promise<void> {
+  const h = historyOf(frame.gameId)
+  if (h.done) return Promise.resolve()
+  if (h.loading) return h.loading
+  const end = Date.parse(frame.at)
+  if (!Number.isFinite(end)) return Promise.resolve()
+  const run = async () => {
+    for (let from = 1; from <= MAX_MINUTES; from += BATCH) {
+      const asked = Array.from({ length: BATCH }, (_, i) => from + i).filter((m) => m <= MAX_MINUTES)
+      const frames = await Promise.all(
+        asked.map(async (m) => {
+          const at = new Date(Math.floor((end - m * MINUTE) / 10_000) * 10_000).toISOString()
+          try {
+            const w = await get<RawWindow>(`${FEED}/window/${frame.gameId}?startingTime=${encodeURIComponent(at)}`)
+            return w.frames?.[0]
+          } catch {
+            return undefined
+          }
+        }),
+      )
+      let reachedStart = false
+      for (const f of frames) {
+        const t = Date.parse(f?.rfc460Timestamp ?? '')
+        // Avant le début de la game, le flux ne répond rien ou renvoie un autre état : la courbe commence là.
+        if (!f || !Number.isFinite(t) || (f.gameState !== 'in_game' && f.gameState !== 'paused')) {
+          reachedStart = true
+          continue
+        }
+        h.points.set(sec(t), { t, blue: f.blueTeam?.totalGold ?? 0, red: f.redTeam?.totalGold ?? 0 })
+      }
+      if (reachedStart) break
+    }
+    h.done = true
+  }
+  h.loading = run().finally(() => {
+    h.loading = undefined
+  })
+  return h.loading
 }

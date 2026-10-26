@@ -43,8 +43,17 @@ tests automatisés. Code et commentaires en français. Tout l'état utilisateur 
     (en-tête `apollographql-client-version`) sur une requête `homeEvents` de lolesports.com (F12 → Réseau → `api/gql`), puis mettre à jour `HOME_EVENTS_HASH`
     et `GQL_CLIENT` en haut de `lolesports.ts`. `fetchEvent` relit la série dans la liste (`fetchLive`, cache partagé 10 s).
   - La liste ne donne pas le camp (bleu/rouge) des équipes : `fetchLiveGame` le déduit du flux (`esportsTeamId` = `teamId` de la liste).
-  - Statistiques de la game : flux `feed.lolesports.com/livestats` (public, CORS `*`) ; il refuse les horodatages trop récents : `fetchLiveFrame` recule de
-    45/75/120/240 s.
+  - Statistiques de la game : flux `feed.lolesports.com/livestats` (public, CORS `*`) ; il refuse les horodatages trop récents : `recent()` recule de
+    45/75/120/240 s (`window` pour `fetchLiveFrame`, `details` pour `fetchLiveDetails`). Le flux **garde tout l'historique** de la game.
+  - Panneau « Direct » (`components/LivePanel.tsx`) : kills et barre d'or, objectifs en paires, courbe d'écart d'or de toute la game, face-à-face par poste (les
+    joueurs du flux sont listés dans l'ordre des postes). Couleurs bleu/rouge = **côté** de la game, pas équipe A/B. La courbe : `recordGold` (chaque image
+    reçue) + `loadGoldHistory` (une fois par game et par session : une image par minute en remontant, 6 requêtes en parallèle, jusqu'au début ou 100 min ;
+    il va à son terme même si l'écran est quitté). Les minutes de l'axe sont comptées depuis la première image du flux, à une minute près (pas d'horloge officielle).
+  - Toucher un joueur ouvre `LivePlayerSheet.tsx` (portail dans `body`) : objets, runes, sorts, KP, part des dégâts, balises. `fetchLiveDetails` n'est appelé
+    **que carte ouverte** (10 s). Objets et runes arrivent en numéros : `useDetailData` (`ddragon.ts`, `item.json` et `runesReforged.json` en fr_FR, cache
+    `persisted` 6 h) donne noms et icônes ; objets/babioles/consommables se distinguent par les **tags** Data Dragon (`Consumable`, `Trinket`), pas par le numéro
+    (les composants comme la Lame de Doran ont des numéros < 3000). Non affichés car douteux : `criticalChance` (0 pour tous, tireurs compris), `attackSpeed`
+    (unité inconnue), `tenacity`.
   - `api/live.ts` rapproche événements live et séries Leaguepedia (nom/sigle normalisés, ±36 h). Si l'API ne répond plus : repli sur Leaguepedia.
   - `rift:live` (ancienne clé collée par l'utilisateur) est supprimée au démarrage par `store.ts`.
 - Ligues : `api/leagues.ts`. Une compétition internationale en cours passe en premier partout (`orderLeagues`).
