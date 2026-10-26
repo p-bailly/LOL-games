@@ -16,7 +16,7 @@ tests automatisés. Code et commentaires en français. Tout l'état utilisateur 
 - `applicationId` `com.pbailly.riftlive`. APK signé par la clé **volontairement versionnée** `android/app/superfan.keystore` (mot de passe
   dans `build.gradle`), la même que *Basket Live* : ne pas la changer, sinon les APK ne s'installent plus par-dessus. Usage perso.
 - Dans l'appli Android, `CapacitorHttp` est activé (`capacitor.config.json`) : requêtes natives, **sans CORS**. Dans le navigateur, ce sont les
-  règles CORS des serveurs qui décident : Leaguepedia répond (via `api.php`), le direct LoL Esports peut être refusé.
+  règles CORS des serveurs qui décident : Leaguepedia répond (via `api.php`), mais `lolesports.com/api/gql` est refusé (pas de direct dans le navigateur).
 - **Partage avec Nimbus** (launcher perso `fr.perso.nimbus`) : `src/lib/nimbus.ts` envoie les équipes favorites au plugin natif `NimbusBridge`
   (SharedPreferences, enregistré dans `MainActivity` avant `super.onCreate`) ; `NimbusProvider` les sert en lecture seule sur
   `content://com.pbailly.riftlive.nimbus/favorites` (colonnes `team_id`, `abbr`, `name`, dans l'ordre des favoris) et ne répond qu'à Nimbus
@@ -30,13 +30,23 @@ tests automatisés. Code et commentaires en français. Tout l'état utilisateur 
   Requêtes **sérialisées** et espacées (150 ms natif, 400 ms navigateur) car Leaguepedia limite les appels anonymes ; reprise avec attente sur `ratelimited`.
   Caches : `cached` (mémoire, requêtes simultanées partagées) et `persisted` (`localStorage` `rift:cache:*`). `usePolling` se met en pause onglet caché ;
   son intervalle dépend des données (ex. 15 s si un match est en cours, 2 min sinon).
-- Sans clé LoL Esports, tout marche avec Leaguepedia (résultats, drafts, stats quelques minutes après la fin d'une game ; série dont l'heure est passée =
-  « En cours (estimé) »). Stats détaillées d'une game (picks, items) seulement une fois la game terminée. Les **bans viennent toujours de Leaguepedia**
-  (le direct ne donne que les champions choisis).
-- `src/api/lolesports.ts` : API **non officielle et non documentée** (lectures défensives). `persisted/gw` exige l'en-tête `x-api-key` (clé collée par
-  l'utilisateur, `rift:live`, envoyée à LoL Esports seulement, peut changer ; 401/403 = « clé périmée »). Le flux `feed.lolesports.com/livestats` est
-  public (la clé n'est donnée qu'au second essai) et refuse les horodatages trop récents : `fetchLiveFrame` recule de 45/75/120/240 s.
-  `api/live.ts` rapproche événements live et séries Leaguepedia (nom/sigle normalisés, ±36 h). Si l'API ne répond plus : repli sur Leaguepedia.
+- Sans le direct LoL Esports, tout marche avec Leaguepedia (résultats, drafts, stats quelques minutes après la fin d'une game ; série dont l'heure est
+  passée = « En cours (estimé) »). Stats détaillées d'une game (picks, items) seulement une fois la game terminée. Les **bans viennent toujours de
+  Leaguepedia** (le direct ne donne que les champions choisis).
+- `src/api/lolesports.ts` : API **non officielle et non documentée** (lectures défensives), **sans clé**. Le site ne donne plus de `x-api-key` au
+  navigateur (elle reste côté serveur) : l'ancienne API `esports-api.lolesports.com/persisted/gw` n'est plus utilisée.
+  - Liste des séries en direct : `GET lolesports.com/api/gql`, requête GraphQL **persistée** `homeEvents` (`eventState: ['inProgress']`). Il faut les en-têtes
+    `content-type: application/json` et `apollographql-client-name/version` (sinon 401 « No client headers set » ou erreur CSRF). Pas de CORS :
+    appli Android seulement (`liveSupported`, proxy HTTP natif de Capacitor) ; réglage `rift:direct` (`enabled`, défaut `true`, interrupteur dans
+    `TeamsPage`). `liveActive()` = Android **et** réglage actif ; sinon `applyLive` rend les séries Leaguepedia intactes.
+  - **Si le direct casse** (« requête périmée ») : le site a changé. Relever l'empreinte (`sha256Hash` du paramètre `extensions`) et la version du client
+    (en-tête `apollographql-client-version`) sur une requête `homeEvents` de lolesports.com (F12 → Réseau → `api/gql`), puis mettre à jour `HOME_EVENTS_HASH`
+    et `GQL_CLIENT` en haut de `lolesports.ts`. `fetchEvent` relit la série dans la liste (`fetchLive`, cache partagé 10 s).
+  - La liste ne donne pas le camp (bleu/rouge) des équipes : `fetchLiveGame` le déduit du flux (`esportsTeamId` = `teamId` de la liste).
+  - Statistiques de la game : flux `feed.lolesports.com/livestats` (public, CORS `*`) ; il refuse les horodatages trop récents : `fetchLiveFrame` recule de
+    45/75/120/240 s.
+  - `api/live.ts` rapproche événements live et séries Leaguepedia (nom/sigle normalisés, ±36 h). Si l'API ne répond plus : repli sur Leaguepedia.
+  - `rift:live` (ancienne clé collée par l'utilisateur) est supprimée au démarrage par `store.ts`.
 - Ligues : `api/leagues.ts`. Une compétition internationale en cours passe en premier partout (`orderLeagues`).
 - Records d'une année / de tous les temps (`api/records.ts`) : on ne télécharge pas les ~90 000 games, on demande à Leaguepedia le top 3 par catégorie ;
   cache 12 h (1 h pour l'année en cours).

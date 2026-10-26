@@ -1,30 +1,75 @@
-import { getApiKey } from '../lib/store'
+import { Capacitor } from '@capacitor/core'
+import { liveSettings } from '../lib/store'
 
-// API non officielle de lolesports.com : séries en direct, détail des games en cours et statistiques « live »
-// (or, kills, objectifs, joueurs). Elle demande une clé (en-tête x-api-key) que l'utilisateur colle dans l'appli ;
-// sans clé, tout ce fichier reste inutilisé et l'appli fonctionne avec Leaguepedia seule.
-// Le format n'est pas documenté : chaque lecture est donc défensive.
+// API non officielle de lolesports.com : séries en direct et statistiques « live » de la game en cours (or, kills,
+// objectifs, joueurs). Deux sources, sans aucune clé :
+//  - la liste des séries en direct vient de l'API GraphQL du site (lolesports.com/api/gql), la même que celle de ses
+//    pages. Elle n'envoie pas d'en-têtes CORS : seul l'appli Android, qui passe par le HTTP natif de Capacitor, peut
+//    l'appeler (dans un navigateur, tout ce fichier reste inutilisé et l'appli fonctionne avec Leaguepedia seule) ;
+//  - les statistiques d'une game viennent du flux public feed.lolesports.com, ouvert à tous les navigateurs.
+// Rien n'est documenté : chaque lecture est donc défensive, et toute erreur ramène à Leaguepedia.
 
-const API = 'https://esports-api.lolesports.com/persisted/gw'
+const GQL = 'https://lolesports.com/api/gql'
 const FEED = 'https://feed.lolesports.com/livestats/v1'
 
-export class MissingKeyError extends Error {
+// La requête « homeEvents » du site est « persistée » : le serveur la connaît par son empreinte, liée à la version du
+// site. Si le direct cesse de marcher (« requête périmée »), relever ces trois valeurs sur lolesports.com : F12 →
+// Réseau → filtrer « api/gql » → une requête homeEvents ; l'empreinte est `sha256Hash` dans le paramètre `extensions`,
+// la version est l'en-tête `apollographql-client-version`.
+const GQL_CLIENT = { name: 'Esports Web', version: '50f31bf' }
+const HOME_EVENTS_HASH = 'e4da9fd0ab89ecdb783912d74799688d1f52f1edc9b87497d3409c74d9b4291a'
+
+/** Le direct LoL Esports ne peut être demandé que depuis l'appli Android (voir plus haut). */
+export const liveSupported = Capacitor.isNativePlatform()
+
+/** Direct actif : appli Android, et réglage « Direct LoL Esports » non coupé. */
+export const liveActive = () => liveSupported && liveSettings.get().enabled
+
+export class LiveUnavailableError extends Error {
   constructor() {
-    super('Clé LoL Esports manquante.')
+    super('Le direct LoL Esports n’est disponible que dans l’appli Android.')
   }
 }
 
-async function get<T>(url: string, signal?: AbortSignal, withKey = true): Promise<T> {
-  const key = getApiKey()
-  if (withKey && !key) throw new MissingKeyError()
-  const res = await fetch(url, { signal, headers: withKey ? { 'x-api-key': key } : undefined })
-  if (res.status === 403 || res.status === 401) throw new Error('Clé LoL Esports refusée (périmée ?).')
+async function get<T>(url: string, signal?: AbortSignal): Promise<T> {
+  const res = await fetch(url, { signal })
   if (!res.ok) throw new Error(`LoL Esports : erreur ${res.status}`)
   return (await res.json()) as T
 }
 
-const gw = <T>(endpoint: string, params: Record<string, string>, signal?: AbortSignal) =>
-  get<{ data: T }>(`${API}/${endpoint}?${new URLSearchParams({ hl: 'fr-FR', ...params })}`, signal).then((r) => r.data)
+/** Appelle une requête persistée de l'API GraphQL du site. */
+async function gql<T>(operationName: string, hash: string, variables: object, signal?: AbortSignal): Promise<T> {
+  if (!liveSupported) throw new LiveUnavailableError()
+  const params = new URLSearchParams({
+    operationName,
+    variables: JSON.stringify(variables),
+    extensions: JSON.stringify({
+      clientLibrary: { name: '@apollo/client', version: '4.1.9' },
+      persistedQuery: { version: 1, sha256Hash: hash },
+    }),
+  })
+  const res = await fetch(`${GQL}?${params}`, {
+    signal,
+    headers: {
+      accept: 'application/graphql-response+json,application/json;q=0.9',
+      'content-type': 'application/json',
+      'apollographql-client-name': GQL_CLIENT.name,
+      'apollographql-client-version': GQL_CLIENT.version,
+    },
+  })
+  // Les erreurs GraphQL arrivent avec un statut 200 ou 4xx et un corps JSON : on le lit d'abord.
+  const body = (await res.json().catch(() => undefined)) as { data?: T; errors?: { message?: string; extensions?: { code?: string } }[] } | undefined
+  const err = body?.errors?.[0]
+  if (err) {
+    throw new Error(
+      err.extensions?.code === 'PERSISTED_QUERY_NOT_FOUND' || /PersistedQueryNotFound/i.test(err.message ?? '')
+        ? 'LoL Esports : requête périmée (le site a changé, voir lolesports.ts).'
+        : `LoL Esports : ${err.message ?? 'erreur'}`,
+    )
+  }
+  if (!res.ok || !body?.data) throw new Error(`LoL Esports : erreur ${res.status}`)
+  return body.data
+}
 
 // ---------- Séries en direct ----------
 
@@ -55,7 +100,8 @@ export interface LiveEvent {
 }
 
 interface RawTeam {
-  id?: string
+  /** Identifiant d'équipe LoL Esports : le même que `esportsTeamId` dans le flux de statistiques. */
+  teamId?: string
   name?: string
   code?: string
   image?: string
@@ -65,28 +111,23 @@ interface RawGame {
   id?: string
   number?: number
   state?: string
-  teams?: { id?: string; side?: string }[]
 }
 interface RawEvent {
   startTime?: string
   league?: { name?: string; slug?: string }
-  match?: { id?: string; teams?: RawTeam[]; strategy?: { count?: number }; games?: RawGame[] }
-  games?: RawGame[]
+  match?: { id?: string; strategy?: { count?: number }; games?: RawGame[] }
+  matchTeams?: RawTeam[]
 }
 
+// Le camp (bleu / rouge) de chaque équipe n'est pas dans cette liste : fetchLiveGame le lit dans le flux de statistiques.
 const games = (raw?: RawGame[]): LiveGameRef[] =>
-  (raw ?? []).map((g) => ({
-    id: String(g.id ?? ''),
-    number: g.number ?? 0,
-    state: g.state ?? '',
-    teams: (g.teams ?? []).map((t) => ({ id: String(t.id ?? ''), side: t.side === 'red' ? 'red' : 'blue' })),
-  }))
+  (raw ?? []).map((g) => ({ id: String(g.id ?? ''), number: g.number ?? 0, state: g.state ?? '', teams: [] }))
 
 function toEvent(e: RawEvent): LiveEvent | undefined {
   const m = e.match
-  const t = m?.teams
+  const t = e.matchTeams
   if (!m?.id || !t || t.length < 2) return undefined
-  const ref = (x: RawTeam): LiveTeamRef => ({ id: x.id, name: x.name ?? '', code: x.code ?? '', image: x.image, wins: x.result?.gameWins ?? 0 })
+  const ref = (x: RawTeam): LiveTeamRef => ({ id: x.teamId, name: x.name ?? '', code: x.code ?? '', image: x.image, wins: x.result?.gameWins ?? 0 })
   return {
     matchId: String(m.id),
     startTime: e.startTime ?? '',
@@ -94,7 +135,7 @@ function toEvent(e: RawEvent): LiveEvent | undefined {
     leagueName: e.league?.name ?? '',
     bestOf: m.strategy?.count ?? 1,
     teams: [ref(t[0]), ref(t[1])],
-    games: games(m.games ?? e.games),
+    games: games(m.games),
   }
 }
 
@@ -105,8 +146,13 @@ let livePromise: Promise<LiveEvent[]> | undefined
 export function fetchLive(signal?: AbortSignal): Promise<LiveEvent[]> {
   if (livePromise && Date.now() - liveAt < 10_000) return livePromise
   liveAt = Date.now()
-  livePromise = gw<{ schedule?: { events?: RawEvent[] } }>('getLive', {}, signal)
-    .then((d) => (d.schedule?.events ?? []).map(toEvent).filter((e): e is LiveEvent => !!e))
+  livePromise = gql<{ esports?: { events?: RawEvent[] } }>(
+    'homeEvents',
+    HOME_EVENTS_HASH,
+    { hl: 'fr-FR', sport: 'lol', eventState: ['inProgress'], eventType: 'all', vodType: ['recap'], pageSize: 300 },
+    signal,
+  )
+    .then((d) => (d.esports?.events ?? []).map(toEvent).filter((e): e is LiveEvent => !!e))
     .catch((e) => {
       livePromise = undefined
       throw e
@@ -114,10 +160,9 @@ export function fetchLive(signal?: AbortSignal): Promise<LiveEvent[]> {
   return livePromise
 }
 
-/** Détail d'une série : identifiants des équipes et des games. */
+/** Une série en direct d'après son identifiant : identifiants des équipes et des games, états à jour. */
 export async function fetchEvent(matchId: string, signal?: AbortSignal): Promise<LiveEvent | undefined> {
-  const d = await gw<{ event?: RawEvent }>('getEventDetails', { id: matchId }, signal)
-  return d.event ? toEvent({ ...d.event, match: d.event.match && { ...d.event.match, id: d.event.match.id ?? matchId } }) : undefined
+  return (await fetchLive(signal)).find((e) => e.matchId === matchId)
 }
 
 // ---------- Statistiques d'une game en direct ----------
@@ -234,11 +279,7 @@ export async function fetchLiveFrame(gameId: string, signal?: AbortSignal): Prom
     const url = `${FEED}/window/${gameId}?startingTime=${encodeURIComponent(startingTime(lag))}`
     let w: RawWindow
     try {
-      // Le flux est public ; si jamais il réclamait la clé, on la lui donne au second essai.
-      w = await get<RawWindow>(url, signal, false).catch((e: Error) => {
-        if (/erreur 40[13]/.test(e.message) && getApiKey()) return get<RawWindow>(url, signal, true)
-        throw e
-      })
+      w = await get<RawWindow>(url, signal)
     } catch (e) {
       if ((e as Error).name === 'AbortError') throw e
       continue

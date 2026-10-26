@@ -28,11 +28,11 @@ npm run build        # puis npm run preview
 ## Données et usage
 
 Les données viennent de [Leaguepedia](https://lol.fandom.com) (calendrier, résultats, drafts, stats ; aucune clé) et de
-Data Dragon (icônes). Sans clé, les résultats arrivent quelques minutes après chaque game.
+Data Dragon (icônes). Sans le direct, les résultats arrivent quelques minutes après chaque game.
 
-**Direct (facultatif)** : avec une clé de l'API de lolesports.com, la série et la game en cours sont suivies en direct.
-Sur lolesports.com (outils de développement F12, onglet *Réseau*), copier l'en-tête `x-api-key` d'une requête vers
-`esports-api.lolesports.com`, puis la coller dans l'appli : **Équipes → Direct LoL Esports** (la clé reste sur l'appareil).
+**Direct** (appli Android, aucune clé à fournir) : la série et la game en cours sont suivies en direct d'après
+lolesports.com (API non officielle, qui peut changer sans préavis : l'appli revient alors à Leaguepedia). Il est activé par
+défaut ; **Équipes → Direct LoL Esports** permet de le couper ou de le tester. Dans le navigateur, il n'est pas disponible.
 Les **alertes** (début de série, fin de game, game décisive, résultat) s'activent dans l'onglet **Équipes**.
 
 Détails techniques, Elo, partage avec le launcher Nimbus : voir [`CLAUDE.md`](CLAUDE.md).

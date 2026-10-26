@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { resolveTeams, teamOf, onTeamsResolved } from '../api/leaguepedia'
-import { fetchLive, MissingKeyError } from '../api/lolesports'
+import { fetchLive, liveSupported } from '../api/lolesports'
 import { fetchLeagueTeams } from '../api/stats'
 import type { Team } from '../api/types'
 import { ErrorBox, Loading, PageHeader, Star, TeamLogo } from '../components/ui'
@@ -60,7 +60,7 @@ export function TeamsPage({ active }: { active: boolean }) {
 
         <AlertsCard />
 
-        <LiveKeyCard />
+        <LiveCard />
 
         <section className="card">
           <h3 className="card-title">Toutes les équipes</h3>
@@ -152,89 +152,64 @@ function AlertsCard() {
           </label>
         ))}
       {settings.enabled && (
-        <p className="muted small">Sans clé LoL Esports, les alertes suivent Leaguepedia : elles arrivent quelques minutes après la fin de chaque game.</p>
+        <p className="muted small">Sans le direct LoL Esports, les alertes suivent Leaguepedia : elles arrivent quelques minutes après la fin de chaque game.</p>
       )}
     </section>
   )
 }
 
-/** Clé de l'API LoL Esports : active le direct exact (score, or, objectifs) à la place des résultats différés. */
-function LiveKeyCard() {
+/** Direct LoL Esports : score de la série en temps réel et statistiques de la game en cours, à la place des résultats différés. */
+function LiveCard() {
   const { settings, update } = useLiveSettings()
-  const [draft, setDraft] = useState(settings.apiKey)
-  const [show, setShow] = useState(false)
   const [status, setStatus] = useState<{ ok: boolean; text: string } | undefined>()
   const [testing, setTesting] = useState(false)
-  const active = !!settings.apiKey
 
   const test = async () => {
     setTesting(true)
     try {
       const live = await fetchLive()
-      setStatus({ ok: true, text: live.length ? `Clé acceptée · ${live.length} série${live.length > 1 ? 's' : ''} en direct` : 'Clé acceptée · aucune série en direct pour le moment' })
+      setStatus({ ok: true, text: live.length ? `Direct disponible · ${live.length} série${live.length > 1 ? 's' : ''} en direct` : 'Direct disponible · aucune série en direct pour le moment' })
     } catch (e) {
-      setStatus({ ok: false, text: e instanceof MissingKeyError ? 'Aucune clé enregistrée.' : (e as Error).message })
+      setStatus({ ok: false, text: (e as Error).message })
     } finally {
       setTesting(false)
     }
-  }
-  const save = () => {
-    update({ apiKey: draft.trim() })
-    setStatus(undefined)
-    if (draft.trim()) setTimeout(test, 0)
-  }
-  const remove = () => {
-    update({ apiKey: '' })
-    setDraft('')
-    setStatus(undefined)
   }
 
   return (
     <section className="card">
       <h3 className="card-title">Direct LoL Esports</h3>
       <p className="muted small">
-        Sans clé, l’app utilise Leaguepedia : calendrier, drafts et statistiques, avec quelques minutes de retard. Avec la clé de
-        l’API de lolesports.com, elle affiche le direct exact : score de la série en temps réel, or, kills, objectifs et joueurs de la
-        game en cours.
+        Sans le direct, l’app utilise Leaguepedia : calendrier, drafts et statistiques, avec quelques minutes de retard. Avec lui, elle
+        affiche le score de la série en temps réel, puis l’or, les kills, les objectifs et les joueurs de la game en cours.
       </p>
-      <details className="howto">
-        <summary>Où trouver la clé ?</summary>
-        <ol>
-          <li>Ouvrez lolesports.com sur un ordinateur, puis les outils de développement (F12), onglet « Réseau ».</li>
-          <li>Rechargez la page et cliquez sur une requête vers <code>esports-api.lolesports.com</code> (ex. getSchedule).</li>
-          <li>Copiez la valeur de l’en-tête <code>x-api-key</code> et collez-la ici.</li>
-        </ol>
-        <p className="muted small">La clé reste sur cet appareil et n’est envoyée qu’à LoL Esports. Elle peut changer : recommencez alors la manipulation.</p>
-      </details>
-      <div className="key-row">
+      <label className="switch-row">
+        <span>
+          <strong>Activer le direct</strong>
+          <small className="muted">
+            {liveSupported
+              ? 'Lit l’API de lolesports.com, non officielle : elle peut changer sans préavis, l’app revient alors à Leaguepedia.'
+              : 'Disponible seulement dans l’appli Android : le navigateur est bloqué par les règles CORS de lolesports.com.'}
+          </small>
+        </span>
         <input
-          className="search"
-          type={show ? 'text' : 'password'}
-          placeholder="Collez la clé x-api-key"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          autoComplete="off"
-          spellCheck={false}
+          type="checkbox"
+          role="switch"
+          checked={liveSupported && settings.enabled}
+          disabled={!liveSupported}
+          onChange={(e) => {
+            update({ enabled: e.target.checked })
+            setStatus(undefined)
+          }}
         />
-        <button className="chip" onClick={() => setShow(!show)} aria-pressed={show}>
-          {show ? 'Masquer' : 'Afficher'}
-        </button>
-      </div>
-      <div className="key-actions">
-        <button className="btn" onClick={save} disabled={!draft.trim() || draft.trim() === settings.apiKey}>
-          Enregistrer
-        </button>
-        {active && (
-          <>
-            <button className="link-btn" onClick={test} disabled={testing}>
-              {testing ? 'Test…' : 'Tester la clé'}
-            </button>
-            <button className="link-btn" onClick={remove}>
-              Supprimer
-            </button>
-          </>
-        )}
-      </div>
+      </label>
+      {liveSupported && settings.enabled && (
+        <div className="key-actions">
+          <button className="link-btn" onClick={test} disabled={testing}>
+            {testing ? 'Test…' : 'Tester le direct'}
+          </button>
+        </div>
+      )}
       {status && <p className={status.ok ? 'muted small' : 'warn'}>{status.text}</p>}
     </section>
   )

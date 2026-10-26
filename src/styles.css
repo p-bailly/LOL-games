@@ -1545,17 +1545,6 @@ input[role='switch']:checked::after {
   color: var(--accent);
   text-decoration: underline;
 }
-.key-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-top: 12px;
-}
-.key-row .search {
-  margin: 0;
-  flex: 1;
-  min-width: 0;
-}
 .key-actions {
   display: flex;
   align-items: center;
@@ -2039,8 +2028,7 @@ a.player-link:hover strong {
   font-weight: 600;
   padding: 4px 2px;
 }
-.runes ul,
-.howto ol {
+.runes ul {
   margin: 6px 0 0;
   padding-left: 18px;
 }
@@ -2050,21 +2038,6 @@ a.player-link:hover strong {
   padding: 4px 0;
   list-style: none;
   margin-left: -18px;
-}
-.howto {
-  margin: 8px 0 12px;
-  font-size: 13.5px;
-}
-.howto summary {
-  cursor: pointer;
-  color: var(--accent);
-  font-weight: 650;
-}
-.howto code {
-  padding: 1px 5px;
-  border-radius: 5px;
-  background: var(--surface-2);
-  font-size: 12.5px;
 }
 
 /* ---------- Direct ---------- */
