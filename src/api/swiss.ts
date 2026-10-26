@@ -45,9 +45,21 @@ export interface BracketBox {
   matches: BracketMatch[]
 }
 
+/** Équipes qualifiées (3 victoires) ou éliminées (3 défaites) avec le même bilan, places à venir comprises. */
+export interface BracketResult {
+  wins: number
+  losses: number
+  qualified: boolean
+  teams: (Team | undefined)[]
+}
+
 export interface BracketColumn {
   round: string
   boxes: BracketBox[]
+  /** Qualifiées du tour précédent, en tête de colonne (3-0 au tour 4, 3-1 au tour 5, 3-2 au bilan final). */
+  qualified?: BracketResult
+  /** Éliminées du tour précédent, en bas de colonne. */
+  eliminated?: BracketResult
 }
 
 export interface Swiss {
@@ -179,7 +191,24 @@ function buildBracket(rounds: Round[], rows: Map<string, SwissRow>, teams: numbe
       while (mine.length < slots) mine.push({})
       boxes.push({ wins: w, losses: l, bestOf, matches: mine })
     }
-    columns.push({ round: `Tour ${k + 1}`, boxes })
+    columns.push({ round: `Tour ${k + 1}`, boxes, ...results(k) })
   }
+  // Dernière colonne : les qualifiées en 3-2 et les éliminées en 2-3, sans série à jouer.
+  columns.push({ round: 'Bilan final', boxes: [], ...results(maxRounds) })
   return columns
+
+  // Équipes arrivées à 3 victoires (ou 3 défaites) au tour k : n × C(k-1, autre) / 2^k places.
+  function results(k: number): Pick<BracketColumn, 'qualified' | 'eliminated'> {
+    const other = k - SWISS_WINS
+    if (other < 0) return {}
+    const slots = Math.round((n * choose(k - 1, other)) / 2 ** k)
+    const box = (qualified: boolean): BracketResult => {
+      const w = qualified ? SWISS_WINS : other
+      const l = qualified ? other : SWISS_WINS
+      const teams: (Team | undefined)[] = [...rows.values()].filter((r) => r.wins === w && r.losses === l).map((r) => r.team)
+      while (teams.length < slots) teams.push(undefined)
+      return { wins: w, losses: l, qualified, teams }
+    }
+    return { qualified: box(true), eliminated: box(false) }
+  }
 }

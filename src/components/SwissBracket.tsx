@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { BracketBox, BracketMatch, Swiss } from '../api/swiss'
+import type { BracketBox, BracketMatch, BracketResult, Swiss } from '../api/swiss'
 import { timeOf } from '../lib/format'
 import { href } from '../lib/router'
 import { useFavorites } from '../lib/store'
@@ -14,16 +14,17 @@ function Row({ m, favs }: { m: BracketMatch; favs: string[] }) {
           <b>{m.a.code}</b>
           <TeamLogo team={m.a} size={22} />
         </span>
-        <span className="bm-mid">vs</span>
+        <span className="bm-mid" />
         <span className="bm-team right">TBD</span>
       </div>
     )
   }
   if (!m.a || !m.b) {
+    // Tirage pas encore fait : pas de « vs ».
     return (
       <div className="bm tbd">
         <span className="bm-team">TBD</span>
-        <span className="bm-mid">vs</span>
+        <span className="bm-mid" />
         <span className="bm-team right">TBD</span>
       </div>
     )
@@ -72,6 +73,32 @@ function Box({ box, favs }: { box: BracketBox; favs: string[] }) {
   )
 }
 
+function Result({ box, favs }: { box: BracketResult; favs: string[] }) {
+  return (
+    <section className={`bbox result ${box.qualified ? 'qualified' : 'eliminated'}`}>
+      <h4>
+        {box.wins}-{box.losses}
+      </h4>
+      <div className="bbox-body">
+        {box.teams.map((t, i) =>
+          t ? (
+            <a key={t.id} className={`br-team ${favs.includes(t.id) ? 'fav' : ''}`} href={href.team(t.id)}>
+              <TeamLogo team={t} size={22} />
+              <b>{t.code}</b>
+              <span>{t.name}</span>
+            </a>
+          ) : (
+            <div key={`tbd${i}`} className="br-team tbd">
+              TBD
+            </div>
+          ),
+        )}
+      </div>
+      <footer>{box.qualified ? 'Qualifiées' : 'Éliminées'}</footer>
+    </section>
+  )
+}
+
 /** Bracket de la phase suisse : une colonne par tour, une boîte par bilan, comme sur l'affiche officielle. */
 export function SwissBracket({ swiss }: { swiss: Swiss }) {
   const { ids: favs } = useFavorites()
@@ -93,9 +120,11 @@ export function SwissBracket({ swiss }: { swiss: Swiss }) {
         {swiss.bracket.map((col, i) => (
           <div key={col.round} className={`bcol ${i === current ? 'current' : ''}`}>
             <h3>{col.round}</h3>
+            {col.qualified && <Result box={col.qualified} favs={favs} />}
             {col.boxes.map((b) => (
               <Box key={`${b.wins}-${b.losses}`} box={b} favs={favs} />
             ))}
+            {col.eliminated && <Result box={col.eliminated} favs={favs} />}
           </div>
         ))}
       </div>
