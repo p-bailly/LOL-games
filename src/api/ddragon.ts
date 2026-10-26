@@ -79,3 +79,69 @@ export function itemIcon(name: string): string | undefined {
   const id = data?.items[simple(name)]
   return id && data ? `${CDN}/cdn/${data.version}/img/item/${id}.png` : undefined
 }
+
+// ---------- Objets et runes d'après leur numéro (flux en direct) ----------
+// Le flux en direct de LoL Esports donne des numéros (objet 3748, rune 8010) : les noms français et les icônes viennent
+// de Data Dragon. Chargé à la première ouverture d'une carte de joueur, puis gardé 6 h.
+
+export type ItemKind = 'item' | 'trinket' | 'consumable'
+
+export interface DetailData {
+  items: Record<string, { n: string; k: ItemKind }>
+  /** Runes et arbres de runes : nom et chemin de l'icône. */
+  runes: Record<string, { n: string; i: string }>
+}
+
+interface RawStyle {
+  id: number
+  name: string
+  icon: string
+  slots: { runes: { id: number; name: string; icon: string }[] }[]
+}
+
+let detail: DetailData | undefined
+let detailLoading: Promise<DetailData> | undefined
+
+function loadDetail(): Promise<DetailData> {
+  if (!detailLoading) {
+    detailLoading = persisted('ddragon:detail:v1', 6 * 3_600_000, async () => {
+      const version = ((await (await fetch(`${CDN}/api/versions.json`)).json()) as string[])[0]
+      const [items, runes] = await Promise.all([
+        fetch(`${CDN}/cdn/${version}/data/fr_FR/item.json`).then((r) => r.json()),
+        fetch(`${CDN}/cdn/${version}/data/fr_FR/runesReforged.json`).then((r) => r.json()),
+      ])
+      const out: DetailData = { items: {}, runes: {} }
+      for (const [id, it] of Object.entries(items.data as Record<string, { name: string; consumed?: boolean; tags?: string[] }>)) {
+        const tags = it.tags ?? []
+        out.items[id] = { n: it.name, k: it.consumed || tags.includes('Consumable') ? 'consumable' : tags.includes('Trinket') ? 'trinket' : 'item' }
+      }
+      for (const style of runes as RawStyle[]) {
+        out.runes[style.id] = { n: style.name, i: style.icon }
+        for (const slot of style.slots) for (const r of slot.runes) out.runes[r.id] = { n: r.name, i: r.icon }
+      }
+      return out
+    })
+      .then((d) => {
+        detail = d
+        listeners.forEach((l) => l())
+        return d
+      })
+      .catch((e) => {
+        detailLoading = undefined // on réessaiera à la prochaine ouverture
+        throw e
+      })
+  }
+  return detailLoading
+}
+
+/** Noms d'objets et de runes ; `undefined` tant qu'ils ne sont pas chargés (ou hors-ligne). */
+export function useDetailData(): DetailData | undefined {
+  useDataDragon()
+  useEffect(() => {
+    if (!detail) loadDetail().catch(() => {})
+  }, [])
+  return detail
+}
+
+export const itemIconById = (id: number): string | undefined => (data ? `${CDN}/cdn/${data.version}/img/item/${id}.png` : undefined)
+export const runeIconUrl = (path: string): string => `${CDN}/cdn/img/${path}`

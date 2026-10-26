@@ -33,6 +33,8 @@ Data Dragon (icônes). Sans le direct, les résultats arrivent quelques minutes 
 **Direct** (appli Android, aucune clé à fournir) : la série et la game en cours sont suivies en direct d'après
 lolesports.com (API non officielle, qui peut changer sans préavis : l'appli revient alors à Leaguepedia). Il est activé par
 défaut ; **Équipes → Direct LoL Esports** permet de le couper ou de le tester. Dans le navigateur, il n'est pas disponible.
+La fiche d'un match en direct montre les kills, l'écart d'or sur toute la game, les objectifs et un face-à-face par poste ; toucher un joueur
+ouvre sa carte (objets, runes, sorts).
 Les **alertes** (début de série, fin de game, game décisive, résultat) s'activent dans l'onglet **Équipes**.
 
 Détails techniques, Elo, partage avec le launcher Nimbus : voir [`CLAUDE.md`](CLAUDE.md).
