@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-// Petits stores persistés dans le navigateur (favoris, réglages d'alertes et clé LoL Esports).
+// Petits stores persistés dans le navigateur (favoris, réglages d'alertes et du direct LoL Esports).
 // Tout reste sur l'appareil : l'app est pour un usage perso.
 
 function load<T>(key: string, fallback: T): T {
@@ -79,15 +79,20 @@ export function useAlertSettings() {
 // ---------- Direct (API LoL Esports) ----------
 
 export interface LiveSettings {
-  /** Clé de l'API LoL Esports, collée par l'utilisateur. Vide : pas de direct, Leaguepedia seule. */
-  apiKey: string
+  /** Direct LoL Esports (appli Android) : score de la série en temps réel et statistiques de la game en cours. */
+  enabled: boolean
 }
 
-export const liveSettings = createStore<LiveSettings>('rift:live', { apiKey: '' })
+// Anciennes versions : une clé x-api-key était collée ici (« rift:live »). Elle ne sert plus à rien, on l'efface.
+try {
+  localStorage.removeItem('rift:live')
+} catch {
+  /* stockage indisponible */
+}
+
+export const liveSettings = createStore<LiveSettings>('rift:direct', { enabled: true })
 
 export function useLiveSettings() {
   const settings = useSyncExternalStore(liveSettings.subscribe, liveSettings.get)
   return { settings, update: (patch: Partial<LiveSettings>) => liveSettings.set({ ...settings, ...patch }) }
 }
-
-export const getApiKey = () => liveSettings.get().apiKey.trim()

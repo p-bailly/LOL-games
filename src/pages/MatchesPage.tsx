@@ -252,7 +252,7 @@ export function MatchesPage({ active }: { active: boolean }) {
         {data && matches.length > 0 && (
           <p className="footnote">
             Heures affichées dans votre fuseau horaire.
-            {estimated && ' « En cours (estimé) » : déduit de l’heure de début, sans flux en direct. Ajoutez une clé LoL Esports (onglet Équipes) pour le direct exact.'}
+            {estimated && ' « En cours (estimé) » : déduit de l’heure de début, sans flux en direct. Le direct exact (appli Android, réglage « Direct LoL Esports » de l’onglet Équipes) donne le score en temps réel.'}
           </p>
         )}
       </div>

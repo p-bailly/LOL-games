@@ -103,7 +103,7 @@ function Summary({ t, name }: { t: LiveTeam; name: string }) {
   )
 }
 
-/** Stats de la game en cours, relevées dans le flux officiel (une clé LoL Esports est nécessaire). */
+/** Stats de la game en cours, relevées dans le flux public de LoL Esports (série repérée par applyLive). */
 export function LivePanel({ match }: { match: Match }) {
   const { data, error } = usePolling<LiveGameView | undefined>((s) => fetchLiveGame(match, s), [match.id, match.live?.eventMatchId], 10_000)
   const history = useRef(new Map<string, { t: number; diff: number }[]>())

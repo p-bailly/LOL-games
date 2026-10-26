@@ -17,7 +17,7 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
     et sorts d'invocateur) ;
   - **Équipes** : kills, or, tours, dragons, barons, hérauts, larves du Néant, inhibiteurs ;
   - avant la série : forme sur 5 séries et face-à-face ; replay et lien de la retransmission.
-- **Direct** (avec une clé LoL Esports, voir plus bas) : score de la série en temps réel, et pour la game en cours
+- **Direct** (appli Android, réglage *Direct LoL Esports* de l'onglet Équipes, activé par défaut) : score de la série en temps réel, et pour la game en cours
   l'or, les kills, les objectifs, les 10 joueurs (niveau, KDA, CS, vie) et la courbe d'écart d'or.
 - **Tournoi** (onglet Tournoi) : classement de chaque tournoi (séries et games gagnées, série en cours) ou, pour les playoffs, les séries tour
   par tour. Pour les **Worlds**, la **phase suisse** en bracket comme sur l'affiche officielle (une colonne par tour,
@@ -68,25 +68,34 @@ Ligues suivies : **LEC, LCK, LPL, LCS, LFL, CBLOL, LCP** et les compétitions in
 
 ## Les données
 
-| Source | Sert à | Clé |
+| Source | Sert à | Accès |
 | --- | --- | --- |
 | [Leaguepedia](https://lol.fandom.com) (tables Cargo) | calendrier, résultats, drafts, stats des joueurs, classements, effectifs | aucune |
 | [Data Dragon](https://developer.riotgames.com/docs/lol#data-dragon) (Riot) | icônes des champions et des objets | aucune |
-| API de lolesports.com (non officielle) | direct exact : score, or, objectifs, joueurs de la game en cours | à coller dans l'appli |
+| API de lolesports.com (non officielle) | direct exact : score de la série, puis or, objectifs, joueurs de la game en cours | aucune clé ; appli Android seulement |
 
-**Sans clé**, tout fonctionne avec Leaguepedia : les résultats, drafts et statistiques arrivent quelques minutes
+**Sans le direct**, tout fonctionne avec Leaguepedia : les résultats, drafts et statistiques arrivent quelques minutes
 après la fin de chaque game ; une série dont l'heure est passée est affichée « En cours (estimé) ».
 
-**Avec la clé**, la série est confirmée en direct et la game en cours est détaillée. Pour la trouver :
+**Avec le direct** (aucune clé à fournir), la série est confirmée en direct et la game en cours est détaillée. Deux
+sources, toutes deux lues directement depuis lolesports.com :
 
-1. Ouvre lolesports.com sur un ordinateur, puis les outils de développement (F12), onglet *Réseau*.
-2. Recharge la page, clique sur une requête vers `esports-api.lolesports.com` (par ex. `getSchedule`).
-3. Copie la valeur de l'en-tête `x-api-key`.
-4. Dans l'appli : onglet **Équipes → Direct LoL Esports**, colle la clé, *Enregistrer* (le bouton *Tester la clé*
-   vérifie qu'elle est acceptée).
+- la **liste des séries en direct** (équipes, score, identifiant de la game en cours) vient de l'API GraphQL du site,
+  `lolesports.com/api/gql` (requête `homeEvents`). Elle n'envoie pas d'en-têtes CORS : seul l'**appli Android**, qui passe
+  par le HTTP natif de Capacitor, peut l'appeler ;
+- les **statistiques de la game** (or, kills, objectifs, joueurs) viennent du flux public `feed.lolesports.com`, avec 30 à
+  60 s de retard.
 
-La clé reste sur l'appareil et n'est envoyée qu'à LoL Esports. Elle peut changer : recommence alors la manipulation.
-L'API n'est pas documentée et peut évoluer sans préavis ; si elle ne répond plus, l'appli retombe sur Leaguepedia.
+Avant, l'API du site demandait une clé `x-api-key` à coller dans l'appli ; le site ne l'envoie plus au navigateur
+(elle reste côté serveur) et elle n'est plus utilisée. L'ancienne clé éventuellement enregistrée est effacée au
+premier lancement.
+
+Cette API n'est ni documentée ni ouverte aux applis tierces : elle peut changer ou être bloquée sans préavis, et l'appli
+se présente à elle comme le client du site. Si le direct cesse de marcher (le bouton *Tester le direct* de l'onglet
+Équipes affiche « requête périmée »), c'est que le site a été mis à jour : l'empreinte de la requête et la version du client
+sont deux constantes en haut de `src/api/lolesports.ts`, avec la manière de les relever (F12 → Réseau → `api/gql` →
+une requête `homeEvents`). Pendant ce temps l'appli retombe sur Leaguepedia. Le réglage *Direct LoL Esports* permet de le
+couper.
 
 Limites à connaître :
 
@@ -95,7 +104,8 @@ Limites à connaître :
   « Leaguepedia limite les requêtes » : il suffit de réessayer un peu plus tard.
 - Dans l'**appli Android**, les appels passent par le HTTP natif de Capacitor (`CapacitorHttp`) : pas de restriction
   CORS, ce qui est aussi ce qui permet d'appeler l'API de lolesports.com. Dans le **navigateur**, ce sont les
-  règles CORS des serveurs qui décident : Leaguepedia répond, le direct LoL Esports peut être refusé.
+  règles CORS des serveurs qui décident : Leaguepedia répond, mais l'API de lolesports.com est refusée : pas de direct
+  exact (le flux de statistiques, lui, serait lisible, mais on n'y accède qu'avec l'identifiant de la game).
 - Les statistiques détaillées d'une game (picks, items…) n'existent dans Leaguepedia qu'une fois la game terminée.
 - Les bans sont toujours ceux de Leaguepedia ; le flux en direct ne donne que les champions choisis.
 

@@ -1,6 +1,5 @@
-import { fetchLive, fetchEvent, fetchLiveFrame, type LiveEvent, type LiveFrame } from './lolesports'
+import { fetchLive, fetchEvent, fetchLiveFrame, liveActive, type LiveEvent, type LiveFrame } from './lolesports'
 import type { Match, Team } from './types'
-import { getApiKey } from '../lib/store'
 
 // Mise en relation du flux en direct de LoL Esports avec les séries de Leaguepedia.
 
@@ -31,9 +30,9 @@ function inProgress(e: LiveEvent): number {
   return g?.number ?? Math.max(1, e.games.filter((x) => x.state === 'completed').length + 1)
 }
 
-/** Ajoute à des séries l'état exact (en direct, score de la série) quand une clé LoL Esports est configurée. */
+/** Ajoute à des séries l'état exact (en direct, score de la série) quand le direct LoL Esports est actif. */
 export async function applyLive(matches: Match[], signal?: AbortSignal): Promise<Match[]> {
-  if (!getApiKey() || !matches.some((m) => m.state !== 'post' || Date.now() - new Date(m.date).getTime() < 24 * 3_600_000)) return matches
+  if (!liveActive() || !matches.some((m) => m.state !== 'post' || Date.now() - new Date(m.date).getTime() < 24 * 3_600_000)) return matches
   let events: LiveEvent[]
   try {
     events = await fetchLive(signal)
