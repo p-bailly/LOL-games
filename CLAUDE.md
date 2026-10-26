@@ -14,7 +14,7 @@ tests automatisés. Code et commentaires en français. Tout l'état utilisateur 
 
 ## Android
 - `applicationId` `com.pbailly.riftlive`. APK signé par la clé **volontairement versionnée** `android/app/superfan.keystore` (mot de passe
-  `superfan`, dans `build.gradle`), la même que *Basket Live* : ne pas la changer, sinon les APK ne s'installent plus par-dessus. Usage perso.
+  dans `build.gradle`), la même que *Basket Live* : ne pas la changer, sinon les APK ne s'installent plus par-dessus. Usage perso.
 - Dans l'appli Android, `CapacitorHttp` est activé (`capacitor.config.json`) : requêtes natives, **sans CORS**. Dans le navigateur, ce sont les
   règles CORS des serveurs qui décident : Leaguepedia répond (via `api.php`), le direct LoL Esports peut être refusé.
 - **Partage avec Nimbus** (launcher perso `fr.perso.nimbus`) : `src/lib/nimbus.ts` envoie les équipes favorites au plugin natif `NimbusBridge`
