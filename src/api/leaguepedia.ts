@@ -1,5 +1,6 @@
 import { allLeagueNames, leagueOfName, LEAGUES, ROLES } from './leagues'
-import { cargo, cargoCached, fileUrls, isoDate, list, num, q, qList, sqlDate, str, type Row } from './cargo'
+import { cargo, cargoCached, fileUrls, isoDate, list, num, persisted, q, qList, sqlDate, str, wikiPage, type Row } from './cargo'
+import type { GoldPoint } from './lolesports'
 import type { FormEntry, Game, GameTeam, Match, MatchDetail, PickBan, PlayerLine, Side, State, Team } from './types'
 
 // Calendrier, séries et games depuis Leaguepedia. Les résultats y arrivent quelques minutes après la fin de chaque
@@ -370,6 +371,38 @@ export async function fetchGames(matchId: string, signal?: AbortSignal): Promise
       players.filter((p) => str(p.GameId) === id),
       pbs.find((p) => str(p.GameId) === id),
     )
+  })
+}
+
+// ---------- Courbe d'or d'une game terminée ----------
+// Leaguepedia garde les données Riot de chaque game (pages « V5 data:<id>/Timeline », « V4 » avant 2021) : une image par minute,
+// horloge officielle de la game. Les participants 1 à 5 sont du côté bleu. ~70 ko compressés : chargée seulement à la demande.
+
+interface RawTimeline {
+  frames?: { timestamp?: number; participantFrames?: Record<string, { totalGold?: number }> }[]
+}
+
+const GOLD_TTL = 30 * 86_400_000
+
+/**
+ * Or total de chaque camp, minute par minute (`t` = temps de jeu en ms). Erreur si Leaguepedia n'a pas (encore) la timeline.
+ * Pas de signal d'annulation : le chargement est partagé par le cache et va à son terme.
+ */
+export function fetchGoldTimeline(gameId: string): Promise<GoldPoint[]> {
+  return persisted(`gold:${gameId}`, GOLD_TTL, async () => {
+    const [row] = await cargo({ tables: 'MatchScheduleGame', fields: 'RiotPlatformGameId,RiotVersion', where: `GameId=${q(gameId)}`, limit: 1 })
+    const riot = str(row?.RiotPlatformGameId)
+    const raw = riot ? await wikiPage(`V${num(row?.RiotVersion) ?? 5} data:${riot}/Timeline`) : undefined
+    const frames = raw ? ((JSON.parse(raw) as RawTimeline).frames ?? []) : []
+    const points: GoldPoint[] = []
+    for (const { timestamp, participantFrames: pf } of frames) {
+      if (typeof timestamp !== 'number' || !pf) continue
+      const gold = (from: number) => [0, 1, 2, 3, 4].reduce((s, i) => s + (pf[from + i]?.totalGold ?? 0), 0)
+      points.push({ t: timestamp, blue: gold(1), red: gold(6) })
+    }
+    // Rien de publié : on lève une erreur pour que rien ne soit mis en cache et qu'on réessaie à la prochaine visite.
+    if (points.length < 2) throw new Error('Courbe d’or pas encore publiée par Leaguepedia pour cette game.')
+    return points
   })
 }
 

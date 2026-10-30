@@ -56,6 +56,10 @@ tests automatisés. Code et commentaires en français. Tout l'état utilisateur 
     (unité inconnue), `tenacity`.
   - `api/live.ts` rapproche événements live et séries Leaguepedia (nom/sigle normalisés, ±36 h). Si l'API ne répond plus : repli sur Leaguepedia.
   - `rift:live` (ancienne clé collée par l'utilisateur) est supprimée au démarrage par `store.ts`.
+- Courbe d'or d'une game terminée (onglet « Or » du récap, `MatchPage` → `GoldChart`, partagé avec le direct) : `fetchGoldTimeline` (`leaguepedia.ts`) lit
+  `RiotPlatformGameId`/`RiotVersion` dans `MatchScheduleGame`, puis la page wiki `V5 data:<id>/Timeline` (`V4` avant 2021) via `wikiPage` (`cargo.ts`,
+  `api.php`, même file d'attente) : timeline Riot, une image par minute, participants 1-5 = bleu. ~70 ko compressés, chargée onglet ouvert seulement ;
+  la courbe extraite est gardée 30 jours (`persisted`). Rien de publié = erreur (rien en cache, on réessaie).
 - Ligues : `api/leagues.ts`. Une compétition internationale en cours passe en premier partout (`orderLeagues`).
 - Records d'une année / de tous les temps (`api/records.ts`) : on ne télécharge pas les ~90 000 games, on demande à Leaguepedia le top 3 par catégorie ;
   cache 12 h (1 h pour l'année en cours).

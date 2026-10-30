@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { fetchMatchDetail } from '../api/leaguepedia'
+import { fetchGoldTimeline, fetchMatchDetail } from '../api/leaguepedia'
 import { applyLive } from '../api/live'
 import { fetchRatings, ratingOf, winChance } from '../api/ratings'
 import type { FormEntry, Game, Match, MatchDetail, Side } from '../api/types'
 import { Draft, Scoreboard, TeamCompare } from '../components/GameViews'
+import { GoldChart } from '../components/GoldChart'
 import { LivePanel } from '../components/LivePanel'
 import { Chips, Empty, EloDelta, ErrorBox, LiveBadge, Loading, PageHeader, Segmented, TeamLogo, UpdatedAt } from '../components/ui'
 import { useElo } from '../hooks/useElo'
@@ -12,7 +13,7 @@ import { bestOfLabel, isDecider, shortDate, statusLabel, timeOf } from '../lib/f
 import { href } from '../lib/router'
 import { useFavorites } from '../lib/store'
 
-type Tab = 'draft' | 'players' | 'teams'
+type Tab = 'draft' | 'players' | 'teams' | 'gold'
 
 export function MatchPage({ id }: { id: string }) {
   const { data, error, updatedAt, loading, refresh } = usePolling(
@@ -165,14 +166,24 @@ function Games({ detail }: { detail: MatchDetail }) {
             { value: 'draft', label: 'Draft' },
             { value: 'players', label: 'Joueurs' },
             { value: 'teams', label: 'Équipes' },
+            { value: 'gold', label: 'Or' },
           ]}
         />
       </div>
       {tab === 'draft' && <Draft game={current} />}
       {tab === 'players' && (current.blue.players.length ? <Scoreboard game={current} /> : <Empty>Statistiques des joueurs indisponibles.</Empty>)}
       {tab === 'teams' && <TeamCompare game={current} />}
+      {tab === 'gold' && <GameGold game={current} />}
     </>
   )
+}
+
+/** Courbe d'or d'une game terminée, chargée seulement quand l'onglet est ouvert (timeline Riot via Leaguepedia). */
+function GameGold({ game }: { game: Game }) {
+  const { data, error, refresh } = usePolling(() => fetchGoldTimeline(game.id), [game.id])
+  if (error && !data) return <ErrorBox error={error} onRetry={refresh} />
+  if (!data) return <Loading />
+  return <GoldChart series={data} ta={game.blue.team} tb={game.red.team} />
 }
 
 function FormList({ title, entries }: { title: string; entries: FormEntry[] }) {
