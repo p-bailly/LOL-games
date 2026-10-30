@@ -166,6 +166,29 @@ export function cargoCached(query: CargoQuery, ttl: number, signal?: AbortSignal
   return cached(`cargo:${JSON.stringify(query)}`, ttl, () => cargo(query, signal))
 }
 
+// ---------- Pages du wiki ----------
+
+/** Texte d'une page du wiki (ex. les données Riot « V5 data:… »), via api.php ; `undefined` si la page n'existe pas. */
+export function wikiPage(title: string, signal?: AbortSignal): Promise<string | undefined> {
+  const p = new URLSearchParams({ action: 'query', format: 'json', formatversion: '2', origin: '*', prop: 'revisions', rvprop: 'content', rvslots: 'main', titles: title })
+  return enqueue(async () => {
+    for (let attempt = 0; ; attempt++) {
+      const res = await fetch(`${ORIGIN}/api.php?${p}`, { signal })
+      if (!res.ok) throw new Error(`Leaguepedia : erreur ${res.status}`)
+      const json = (await res.json()) as {
+        error?: { code?: string; info?: string }
+        query?: { pages?: { missing?: boolean; revisions?: { slots?: { main?: { content?: string } } }[] }[] }
+      }
+      if (json.error?.code === 'ratelimited' && attempt < 3) {
+        await sleep(2000 * 2 ** attempt)
+        continue
+      }
+      if (json.error) throw new Error(json.error.code === 'ratelimited' ? 'Leaguepedia limite les requêtes : réessayez dans un instant.' : `Leaguepedia : ${json.error.info}`)
+      return json.query?.pages?.[0]?.revisions?.[0]?.slots?.main?.content
+    }
+  })
+}
+
 // ---------- Images (logos d'équipes) ----------
 
 const logoCache = new Map<string, string>()
