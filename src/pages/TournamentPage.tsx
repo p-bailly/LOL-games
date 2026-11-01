@@ -4,6 +4,7 @@ import { leagueByKey } from '../api/leagues'
 import { buildSwiss } from '../api/swiss'
 import type { StandingRow } from '../api/types'
 import { Projection } from '../components/Projection'
+import { PlayoffBracket } from '../components/PlayoffBracket'
 import { SwissBracket } from '../components/SwissBracket'
 import { SwissTable } from '../components/SwissTable'
 import { TournamentPicker, useTournamentPicker } from '../components/TournamentPicker'
@@ -13,7 +14,7 @@ import { shortDate, timeOf } from '../lib/format'
 import { href } from '../lib/router'
 import { useFavorites } from '../lib/store'
 
-type View = 'table' | 'swiss' | 'balances' | 'projection' | 'rounds'
+type View = 'table' | 'swiss' | 'finale' | 'balances' | 'projection' | 'rounds'
 
 export function TournamentPage({ active }: { active: boolean }) {
   const picker = useTournamentPicker(active)
@@ -26,7 +27,9 @@ export function TournamentPage({ active }: { active: boolean }) {
   const rows = standings.data ?? []
   const swiss = useMemo(() => (rounds.data ? buildSwiss(rounds.data, rows) : undefined), [rounds.data, standings.data])
   // Phase suisse d'abord ; sans classement (playoffs, élimination directe), les séries tour par tour.
-  const shown: View = ((view === 'swiss' || view === 'balances') && !swiss ? undefined : view) ?? (swiss ? 'swiss' : standings.data && rows.length === 0 && rounds.data ? 'rounds' : 'table')
+  // Dès que les quarts sont connus, la phase finale passe devant.
+  const finaleKnown = !!swiss?.knockout[0]?.matches.some((m) => m.a)
+  const shown: View = (((view === 'swiss' || view === 'balances' || view === 'finale') && !swiss) ? undefined : view) ?? (swiss ? (finaleKnown ? 'finale' : 'swiss') : standings.data && rows.length === 0 && rounds.data ? 'rounds' : 'table')
   const league = leagueByKey(picker.league)
 
   return (
@@ -42,6 +45,7 @@ export function TournamentPage({ active }: { active: boolean }) {
             ...(swiss
               ? [
                   { value: 'swiss' as const, label: 'Suisse' },
+                  { value: 'finale' as const, label: 'Phase finale' },
                   { value: 'balances' as const, label: 'Bilans' },
                 ]
               : []),
@@ -64,6 +68,7 @@ export function TournamentPage({ active }: { active: boolean }) {
           </>
         )}
         {tournament && shown === 'swiss' && swiss && <SwissBracket swiss={swiss} />}
+        {tournament && shown === 'finale' && swiss && <PlayoffBracket rounds={swiss.knockout} />}
         {tournament && shown === 'balances' && swiss && <SwissTable swiss={swiss} />}
         {tournament && shown === 'projection' && <Projection page={tournament.page} active={active} />}
         {tournament && shown === 'rounds' && (

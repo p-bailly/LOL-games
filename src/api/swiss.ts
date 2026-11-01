@@ -39,8 +39,6 @@ export interface BracketMatch {
 
 /** Une boîte du bracket : toutes les séries d'un tour entre équipes ayant le même bilan. */
 export interface BracketBox {
-  /** Titre de la boîte quand ce n'est pas un bilan (quarts, demies, finale). */
-  title?: string
   wins: number
   losses: number
   bestOf: number
@@ -69,6 +67,14 @@ export interface Swiss {
   rows: SwissRow[]
   /** Le bracket : une colonne par tour, une boîte par bilan (0-0, puis 1-0 et 0-1, puis 2-0, 1-1 et 0-2…). */
   bracket: BracketColumn[]
+  /** Phase finale : quarts (4 séries), demies (2) et finale (1), dans cet ordre. */
+  knockout: KnockoutRound[]
+}
+
+export interface KnockoutRound {
+  label: string
+  bestOf: number
+  matches: BracketMatch[]
 }
 
 const isSwissRound = (name: string) => /^Round \d+$/.test(name)
@@ -120,7 +126,7 @@ export function buildSwiss(rounds: Round[], standings: StandingRow[]): Swiss | u
       (place.get(a.team.id) ?? 99) - (place.get(b.team.id) ?? 99) ||
       a.team.name.localeCompare(b.team.name),
   )
-  return { rounds: swiss.map((r) => r.name), rows: list, bracket: [...buildBracket(swiss, rows, list.length), ...buildKnockout(rounds)] }
+  return { rounds: swiss.map((r) => r.name), rows: list, bracket: buildBracket(swiss, rows, list.length), knockout: buildKnockout(rounds) }
 }
 
 const toBracketMatch = (m: RoundMatch, now: number): BracketMatch => {
@@ -139,7 +145,7 @@ const toBracketMatch = (m: RoundMatch, now: number): BracketMatch => {
 }
 
 /** Phase finale (BO5) : quarts (4 séries), demies (2) et finale (1), avec des places « TBD » tant que les affiches ne sont pas connues. */
-function buildKnockout(rounds: Round[]): BracketColumn[] {
+function buildKnockout(rounds: Round[]): KnockoutRound[] {
   const now = Date.now()
   const stages: { re: RegExp; label: string; slots: number }[] = [
     { re: /^Quarterfinals$/i, label: 'Quarts de finale', slots: 4 },
@@ -154,7 +160,7 @@ function buildKnockout(rounds: Round[]): BracketColumn[] {
       .map((m) => toBracketMatch(m, now))
     while (matches.length < slots) matches.push({})
     const bestOf = found[0]?.bestOf ?? 5
-    return { round: label, boxes: [{ title: label, wins: 0, losses: 0, bestOf, matches }] }
+    return { label, bestOf, matches }
   })
 }
 
