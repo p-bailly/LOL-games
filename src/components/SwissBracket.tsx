@@ -60,9 +60,7 @@ function Row({ m, favs }: { m: BracketMatch; favs: string[] }) {
 function Box({ box, favs }: { box: BracketBox; favs: string[] }) {
   return (
     <section className="bbox">
-      <h4>
-        {box.wins}-{box.losses}
-      </h4>
+      <h4>{box.title ?? `${box.wins}-${box.losses}`}</h4>
       <div className="bbox-body">
         {box.matches.map((m, i) => (
           <Row key={m.id ?? m.a?.id ?? `tbd${i}`} m={m} favs={favs} />
@@ -104,10 +102,10 @@ export function SwissBracket({ swiss }: { swiss: Swiss }) {
   const { ids: favs } = useFavorites()
   const scroller = useRef<HTMLDivElement>(null)
   // On ouvre sur le tour en cours : le premier avec une série connue et pas encore terminée.
-  const current = Math.max(
-    0,
-    swiss.bracket.findIndex((c) => c.boxes.some((b) => b.matches.some((m) => m.a && m.winner === undefined))),
-  )
+  // Tout est joué : on reste sur la dernière colonne qui a un résultat.
+  const hasMatch = (pred: (m: BracketMatch) => boolean) => (c: Swiss['bracket'][number]) => c.boxes.some((b) => b.matches.some(pred))
+  const open = swiss.bracket.findIndex(hasMatch((m) => !!m.a && !!m.b && m.winner === undefined))
+  const current = open >= 0 ? open : Math.max(0, swiss.bracket.map(hasMatch((m) => m.winner !== undefined)).lastIndexOf(true))
   useEffect(() => {
     const el = scroller.current?.children[current] as HTMLElement | undefined
     if (el && scroller.current) scroller.current.scrollLeft = Math.max(0, el.offsetLeft - 12)
@@ -122,7 +120,7 @@ export function SwissBracket({ swiss }: { swiss: Swiss }) {
             <h3>{col.round}</h3>
             {col.qualified && <Result box={col.qualified} favs={favs} />}
             {col.boxes.map((b) => (
-              <Box key={`${b.wins}-${b.losses}`} box={b} favs={favs} />
+              <Box key={b.title ?? `${b.wins}-${b.losses}`} box={b} favs={favs} />
             ))}
             {col.eliminated && <Result box={col.eliminated} favs={favs} />}
           </div>
