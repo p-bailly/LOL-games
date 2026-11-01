@@ -1,4 +1,4 @@
-import type { Round } from './stats'
+import type { Round, RoundMatch } from './stats'
 import type { StandingRow, Team } from './types'
 
 // Phase suisse (Worlds) : les tours « Round 1 », « Round 2»… où chaque équipe joue une série par tour.
@@ -67,6 +67,14 @@ export interface Swiss {
   rows: SwissRow[]
   /** Le bracket : une colonne par tour, une boîte par bilan (0-0, puis 1-0 et 0-1, puis 2-0, 1-1 et 0-2…). */
   bracket: BracketColumn[]
+  /** Phase finale : quarts (4 séries), demies (2) et finale (1), dans cet ordre. */
+  knockout: KnockoutRound[]
+}
+
+export interface KnockoutRound {
+  label: string
+  bestOf: number
+  matches: BracketMatch[]
 }
 
 const isSwissRound = (name: string) => /^Round \d+$/.test(name)
@@ -118,7 +126,42 @@ export function buildSwiss(rounds: Round[], standings: StandingRow[]): Swiss | u
       (place.get(a.team.id) ?? 99) - (place.get(b.team.id) ?? 99) ||
       a.team.name.localeCompare(b.team.name),
   )
-  return { rounds: swiss.map((r) => r.name), rows: list, bracket: buildBracket(swiss, rows, list.length) }
+  return { rounds: swiss.map((r) => r.name), rows: list, bracket: buildBracket(swiss, rows, list.length), knockout: buildKnockout(rounds) }
+}
+
+const toBracketMatch = (m: RoundMatch, now: number): BracketMatch => {
+  const done = m.winner === 1 || m.winner === 2
+  const start = new Date(m.date).getTime()
+  return {
+    id: m.id,
+    a: m.a,
+    b: m.b,
+    scoreA: m.scoreA,
+    scoreB: m.scoreB,
+    winner: done ? m.winner : undefined,
+    date: m.date,
+    live: !done && now >= start && now < start + (m.bestOf * 55 + 20) * 60_000,
+  }
+}
+
+/** Phase finale (BO5) : quarts (4 séries), demies (2) et finale (1), avec des places « TBD » tant que les affiches ne sont pas connues. */
+function buildKnockout(rounds: Round[]): KnockoutRound[] {
+  const now = Date.now()
+  const stages: { re: RegExp; label: string; slots: number }[] = [
+    { re: /^Quarterfinals$/i, label: 'Quarts de finale', slots: 4 },
+    { re: /^Semifinals$/i, label: 'Demi-finales', slots: 2 },
+    { re: /^Finals?$/i, label: 'Finale', slots: 1 },
+  ]
+  return stages.map(({ re, label, slots }) => {
+    const found = rounds.find((r) => re.test(r.name))?.matches ?? []
+    const matches = found
+      .filter((m) => m.a.id !== 'TBD' && m.b.id !== 'TBD')
+      .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id, undefined, { numeric: true }))
+      .map((m) => toBracketMatch(m, now))
+    while (matches.length < slots) matches.push({})
+    const bestOf = found[0]?.bestOf ?? 5
+    return { label, bestOf, matches }
+  })
 }
 
 const choose = (n: number, k: number): number => {
